@@ -1,0 +1,2 @@
+class GerakanNaikTurun:
+    pass
