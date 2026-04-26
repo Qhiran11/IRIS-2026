@@ -82,16 +82,6 @@ def main():
 
 
     while True:
-        # Panggil maju selamanya (Karena stepper di .ino pakai logika kecepatan)
-        # for i in range(langkah):
-        #     r2.motor.stepper1 = 1
-        #     data_keluar = r2.motor.get_array_output()
-        #     writer.kirim_data(data_keluar)
-        # r2.motor.stepper1 = 0
-        # data_keluar = r2.motor.get_array_output()
-        # writer.kirim_data(data_keluar)
-        # time.sleep(1)
-
         # if langkah > 0:
         # selesai = ambil_kfs.jalankan_kombinasi_1(r2, writer)
 
