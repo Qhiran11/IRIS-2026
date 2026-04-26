@@ -19,8 +19,8 @@ def main():
     print("Memulai Program Utama KRAI...")
     # ... (print logo Anda) ...
 
-    r2 = Robot() 
-    # sensor = SensorReader(port='COM36', baudrate=115200) 
+    # r2 = Robot() 
+    sensor = SensorReader(port='COM36', baudrate=115200) 
     writer = ArduinoDueWriter(port='COM29', baudrate=115200) 
     gerak = GerakanDasar()
     Capit = GerakanCapitKFS()
@@ -32,7 +32,7 @@ def main():
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) # Ganti index kamera jika perlu (0, 1, 2)
     # Turunkan resolusi kamera hardware agar loop lebih cepat
     
-    encoder = OpticalEncoder(sensitivity=1.5, deadzone=0.5)
+    encoder = OpticalEncoder(sensitivity=2.0, deadzone=1.0) # Sesuaikan sensitivitas dan deadzone sesuai kebutuhan
 
     # INISIALISASI VARIABEL UNTUK TRACKING TIMEOUT
     array_temp = [0] * 12
