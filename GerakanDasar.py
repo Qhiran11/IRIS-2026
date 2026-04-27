@@ -1,5 +1,5 @@
 class PIDController:
-    def __init__(self, Kp=3.0, Ki=0.1, Kd=1.0):
+    def __init__(self, Kp=8.0, Ki=0.001, Kd=15.0):
         # Parameter diambil dari PID.ino [cite: 28]
         self.Kp = Kp
         self.Ki = Ki
@@ -88,3 +88,9 @@ class GerakanDasar:
 
     def putar_kiri(self, robot):
         self._apply_motor(robot, self.base_speed, -self.base_speed, self.base_speed, -self.base_speed)
+
+    def hadap_sudut(self, robot):
+        """Berputar di tempat untuk mengunci sudut tertentu menggunakan PID"""
+        kor = self.pid.compute(self.target_angle, robot.sensor.kompas)
+
+        self._apply_motor(robot, -kor, kor, -kor, kor)

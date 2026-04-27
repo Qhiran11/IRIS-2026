@@ -7,14 +7,15 @@ class SensorData:
         self.switch = 0
         self.temp_kompas = 0
         self.kompas = 0
-        self.encoder_x = 0
-        self.encoder_y = 0
+        self.jarak_depan = 0
+        self.jarak_kiri = 0
         self.sensor_jarak = 0
+        self.proxi_belakang = 0
         
         # --- DATA BINARY (70% 0 atau 1) ---
         self.kfs_terdeteksi = False
         self.limit_switch_atas = False
-        self.limit_switch_bawah = Falsep
+        self.limit_switch_bawah = False
         self.sensor_garis_1 = False
         self.sensor_garis_2 = False
         self.tombol_start = False
@@ -31,13 +32,25 @@ class SensorData:
         if arr is not None and len(arr) >= 12:
             # Contoh pemetaan (Silakan sesuaikan dengan urutan di STM32)
             
-            if (self.switch == 0):
+            # 1. Ambil Offset di pembacaan pertama
+            if self.switch == 0:
                 self.temp_kompas = arr[0]
                 self.switch = 1
+                print(f"[KALIBRASI] Arah 0 diset pada: {self.temp_kompas} derajat")
             
-            self.kompas          = arr[0] - self.temp_kompas
-            self.encoder_x       = arr[3]
-            self.encoder_y       = arr[2]
+            # 2. Hitung selisih relatif
+            sudut_relatif = arr[0] - self.temp_kompas
+            
+            # 3. NORMALISASI (-180 hingga 180)
+            if sudut_relatif > 180:
+                sudut_relatif -= 360
+            elif sudut_relatif < -180:
+                sudut_relatif += 360
+                
+            # 4. Simpan hasil akhir
+            self.kompas = sudut_relatif
+            self.proxi_belakang    = arr[3]
+            self.jarak_kiri       = arr[2]
             
             # Data Binary (mengubah 0/1 menjadi True/False)
             self.jarak_depan   = arr[1]

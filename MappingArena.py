@@ -182,14 +182,14 @@ class OpticalEncoder:
 
 # Contoh penggunaan:
 
-encoder = OpticalEncoder(sensitivity=1.0, deadzone=0.7)
+# encoder = OpticalEncoder(sensitivity=1.0, deadzone=0.7)
 
-cap = cv2.VideoCapture(2, cv2.CAP_DSHOW)
+# cap = cv2.VideoCapture(2, cv2.CAP_DSHOW)
 
 # cap = cv2.VideoCapture(0)
 
-while True:
+# while True:
 
-    _, frame = cap.read()
-    pos_x, pos_y = encoder.update(frame)
-    print(f"Posisi: X={pos_x:.2f}")
+#     _, frame = cap.read()
+#     pos_x, pos_y = encoder.update(frame)
+#     print(f"Posisi: X={pos_x:.2f}")

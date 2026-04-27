@@ -1,65 +1,46 @@
 import time
-from GerakanCapitKFS import GerakanCapitKFS
+from GerakanDasar import GerakanDasar
 
-class GerakanAmbilKFS:
+class RakitSenjata:
+    # 1. HAPUS pembuatan Robot() dan GerakanDasar() di dalam __init__
     def __init__(self):
-        self.capit = GerakanCapitKFS()
         self.state = "IDLE"
         self.start_time = 0
         self.is_done = False
 
-    def reset(self):
-        self.state = "IDLE"
-        self.is_done = False
-
-    def jalankan(self, robot):
+    # 2. Paksa fungsi ini untuk menerima objek 'robot' dan 'gerak' 
+    # yang sedang dipakai oleh ProsesUtama.py
+    def jalankan(self, robot, gerak, target_angle):
         now = time.time()
 
-        # --- STATE 0: INISIALISASI ---
-        if self.state == "IDLE":
-            print("[KFS] Memulai sequence AMBIL...")
-            self.start_time = now
-            self.state = "PREPARE"
-
-        # --- STATE 1: BUKA & TURUN ---
-        elif self.state == "PREPARE":
-            if (now - self.start_time) < 1.0:
-                self.capit.buka(robot)
-                self.capit.turun(robot)
-                self.capit.putar_setengah(robot)
-            else:
-                self.capit.stop_naik_turun(robot)
+        match self.state:
+            case "IDLE":
+                print("[SENJATA] Memulai sequence RAKIT...")
                 self.start_time = now
-                self.state = "APPROACH"
+                self.state = "PUTAR"
 
-        # --- STATE 2: STEPPER MAJU ---
-        elif self.state == "APPROACH":
-            if (now - self.start_time) < 1.5:
-                self.capit.maju(robot)
-            else:
-                self.start_time = now
-                self.state = "GRAB"
+                # 3. Target rotasi diset di memori robot yang aktif
+                gerak.target_angle = target_angle
 
-        # --- STATE 3: TUTUP/JEPIT ---
-        elif self.state == "GRAB":
-            if (now - self.start_time) < 0.8:
-                self.capit.tutup(robot)
-            else:
-                self.start_time = now
-                self.state = "RETRACT"
-
-        # --- STATE 4: NAIK & MUNDUR ---
-        elif self.state == "RETRACT":
-            if (now - self.start_time) < 1.5:
-                self.capit.naik(robot)
-                self.capit.mundur(robot)
-            else:
-                self.capit.stop_naik_turun(robot)
-                self.state = "FINISHED"
-
-        # --- STATE 5: SELESAI ---
-        elif self.state == "FINISHED":
-            self.is_done = True
-            return True
+            case "PUTAR":
+                gerak.hadap_sudut(robot)
+                
+                # 4. BACA kompas dari objek 'robot' yang datanya selalu FRESH
+                if (robot.sensor.kompas >= (target_angle - 1) and robot.sensor.kompas <= (target_angle + 1)):
+                    if (now - self.start_time > 0.1): # Delay kecil untuk memastikan stabil
+                        print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
+                        self.state = "MENDEKAT"
+                        self.start_time = now
+            
+            case "MENDEKAT":
+                gerak.mundur(robot)
+                if (robot.sensor.proxi_belakang == 0):
+                    print("[SENJATA] Sequence Selesai.")
+                    self.state = "FINISHED"
+                
+            case "FINISHED":
+                self.is_done = True
+                gerak.stop(robot)
+                return True
 
         return False
