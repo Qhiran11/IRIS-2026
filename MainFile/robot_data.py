@@ -11,6 +11,11 @@ class SensorData:
         self.jarak_kiri = 0
         self.sensor_jarak = 0
         self.proxi_belakang = 0
+
+        # sensor ultrasonic
+        self.ultrasonic_kiri = 0
+        self.ultrasonic_kanan = 0
+        self.ultrasonic_belakang = 0
         
         # --- DATA BINARY (70% 0 atau 1) ---
         self.kfs_terdeteksi = False
@@ -49,13 +54,14 @@ class SensorData:
                 
             # 4. Simpan hasil akhir
             self.kompas = sudut_relatif
-            self.proxi_belakang    = arr[3]
-            self.jarak_kiri       = arr[2]
-            
-            # Data Binary (mengubah 0/1 menjadi True/False)
             self.jarak_depan   = arr[1]
-            self.limit_switch_atas = bool(arr[4])
-            self.limit_switch_bawah = bool(arr[5])
+    
+            self.ultrasonic_kiri    = arr[3]
+            self.ultrasonic_kanan = arr[2]
+            self.ultrasonic_belakang = arr[4]
+
+            self.jarak_kiri       = arr[5]
+            
             self.sensor_garis_1   = bool(arr[6])
             self.sensor_garis_2   = bool(arr[7])
             self.tombol_start     = bool(arr[8])
@@ -68,8 +74,8 @@ class SensorData:
 class MotorCommand:
     def __init__(self):
         # Output untuk 6 Motor (PWM)
-        self.m1_pwm = 0
-        self.m2_pwm = 0
+        self.m1_pw = 0
+        self.m2_pw = 0
         self.m3_pwm = 0
         self.m4_pwm = 0
         self.m5_pwm = 0
@@ -90,7 +96,7 @@ class MotorCommand:
         Mengemas variabel menjadi array[13] untuk dikirim ke Arduino Due.
         """
         arr = [
-            self.m1_pwm, self.m2_pwm, self.m3_pwm, 
+            self.m1_pw, self.m2_pw, self.m3_pwm, 
             self.m4_pwm, self.m5_pwm, self.m6_pwm,
             self.motorlain, self.relay_pompa,
             self.capit_putar1, self.capit_putar2,
