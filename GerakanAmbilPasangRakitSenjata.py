@@ -21,7 +21,7 @@ class RakitSenjata:
 
             case "PERISAPAN":
                 gerak.maju(robot)
-                if (now - self.start_time > 0.3):
+                if (now - self.start_time > 0.8):
                     gerak.stop(robot)
                     self.start_time = now
                     self.state = "PUTAR1"
@@ -40,13 +40,15 @@ class RakitSenjata:
 # ...
             case "MENDEKAT":
                 jarak = robot.sensor.ultrasonic_belakang
-                if (jarak >= (target_jarak - 1) and jarak <= (target_jarak + 1)): 
+                if jarak >= (target_jarak - 2) and jarak <= (target_jarak + 2): 
                     # Jika perlu, pastikan juga posisinya sudah stabil selama beberapa detik
                     gerak.stop(robot)
                     if (now - self.start_time > 0.1): 
                         print("[SENJATA] Tiba di posisi rakit (10cm).")
                         self.state = "STOP"
                         self.start_time = now
+                elif(jarak == -1) : 
+                    gerak.mundur(robot)
                 else:
                     gerak.mundur_ke_titik(robot, target_jarak)
 

@@ -9,10 +9,6 @@ class GerakanCapitKFS:
     def __init__(self):
         # --- Parameter Kecepatan & Sudut ---
         self.pwm_naik_turun = 120    # Kecepatan maksimal motor PWM
-        self.step_state_maju = 850     # Jumlah step maju
-        self.step_state_tengah = 400   # Jumlah step tengah
-        self.step_state_mundur = -850  # Jumlah step mundur
-        self.posisiCapit = "belakang"
         
         # Sudut Servo (PCA) - Sesuaikan dengan kalibrasi mekanik Anda
         self.sudut_jepit_buka = 30
@@ -23,7 +19,8 @@ class GerakanCapitKFS:
 
 
     
-        self.posisiPutar = "depan" # Lacak posisi putaran saat ini
+        self.posisiPutar = "putar1" # Lacak posisi putaran saat ini
+        self.waktu_putar = time.time()
         
         # --- Parameter Waktu Putar (Kalibrasi dalam Detik) ---
         # Misal: Butuh 1.5 detik untuk putar 180 derajat (Belakang <-> Depan)
@@ -38,129 +35,80 @@ class GerakanCapitKFS:
     # ==========================================
     # 1. KONTROL JEPIT (1 PCA)
     # ==========================================
-    def jepit(self, robot, writer, aktif):
-        if aktif == "buka":
-            print("buka")
-        elif aktif == "jepit":
-            print("jepit")
-            
-        robot.motor.gripper_status = 255
-        
-        data_keluar = robot.motor.get_array_output()
-        writer.kirim_data(data_keluar)
+    # # positif jepit
+    # robot.motor.capit_jepit = 40
 
+    # # negatif  buka
+    # robot.motor.capit_jepit = -40            
+    def jepit(self, robot):
+        if robot.sensor.limit_capitJepit == 0:
+            robot.motor.capit_jepit = 0
+            return True
+        else:
+            robot.motor.capit_jepit = 255
+        return False
 
-    # ==========================================
-    # 2. KONTROL NAIK TURUN (2 Motor PWM)
-    # ==========================================
-    def naik(self, robot):
-        robot.motor.m5_pwm = self.pwm_naik_turun
-        robot.motor.m6_pwm = self.pwm_naik_turun
-        
-    def turun(self, robot):
-        robot.motor.m5_pwm = -self.pwm_naik_turun
-        robot.motor.m6_pwm = -self.pwm_naik_turun
-
-    def stop_naik_turun(self, robot):
-        robot.motor.m5_pwm = 0
-        robot.motor.m6_pwm = 0
+    def buka(self, robot):
+        if robot.sensor.limit_capitBuka == 0:
+            robot.motor.capit_jepit = 0
+            return True
+        else:
+            robot.motor.capit_jepit = -230
+        return False
 
     # ==========================================
-    # 3. KONTROL MAJU MUNDUR (2 Motor Stepper)
+    # 2. KONTROL MAJU MUNDUR (2 Motor Stepper)
     # ==========================================
-    def MajuMundur(self, robot, writer, perintah):
-        match perintah:
-            case "maju":
-                if self.posisiCapit == "belakang":
-                    robot.motor.stepper1 = self.step_state_maju
-                elif self.posisiCapit == "tengah":
-                    robot.motor.stepper1 = self.step_state_maju - self.step_state_tengah
+    def MajuMundur(self, robot, perintah):
 
-                self.posisiCapit = "depan"
+        # postif mundur
+        # Capit.MajuMundur(robot, 800)
 
-            case "tengah":
-                if self.posisiCapit == "belakang":
-                    robot.motor.stepper1 = self.step_state_tengah
-                elif self.posisiCapit == "depan":
-                    robot.motor.stepper1 = -(self.step_state_tengah)
-
-                self.posisiCapit = "tengah"
+        # negatif maju
+        # Capit.MajuMundur(robot, -800)        
+        robot.motor.stepper1 = perintah
                 
-            case "mundur":
-                if self.posisiCapit == "depan":
-                    robot.motor.stepper1 = self.step_state_mundur
-                elif self.posisiCapit == "tengah":
-                    robot.motor.stepper1 = self.step_state_mundur + self.step_state_tengah
-                self.posisiCapit = "belakang"
-
-            case _:
-                return  
-        data_keluar = robot.motor.get_array_output()
-        writer.kirim_data(data_keluar)
-
     # ==========================================
     # 4. KONTROL PUTAR (2 PCA)
     # ==========================================
-    def putar_dinamis(self, robot, writer, target_posisi):
+    def putar_capit_kebelakang(self, robot):
         """
         Target Posisi: "depan", "tengah", "belakang"
         Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
         """
-        # 1. Jika sudah di posisi yang sama, langsung kembalikan True
-        if self.posisiPutar == target_posisi:
-            return True
+        if (robot.sensor.limit_kiri_capit == 0):robot.motor.capit_putar_kiri = 0
+        else:robot.motor.capit_putar_kiri = 180
 
-        # 2. Inisialisasi Gerakan Baru
-        if not self.is_putar_active:
-            self.putar_start_time = time.time()
-            self.is_putar_active = True
-            
-            # Tentukan Arah dan Durasi berdasarkan posisi sekarang dan target
-            self.durasi_target = 0
-            self.pwm_arah = 0 
-            
-            if self.posisiPutar == "belakang":
-                if target_posisi == "depan":
-                    self.durasi_target = self.waktu_putar_full
-                    self.pwm_arah = 255
-                elif target_posisi == "tengah":
-                    self.durasi_target = self.waktu_putar_setengah
-                    self.pwm_arah = 255
-                    
-            elif self.posisiPutar == "tengah":
-                if target_posisi == "depan":
-                    self.durasi_target = self.waktu_putar_setengah
-                    self.pwm_arah = 255
-                elif target_posisi == "belakang":
-                    self.durasi_target = self.waktu_putar_setengah
-                    self.pwm_arah = -255
-                    
-            elif self.posisiPutar == "depan":
-                if target_posisi == "belakang":
-                    self.durasi_target = self.waktu_putar_full
-                    self.pwm_arah = -255
-                elif target_posisi == "tengah":
-                    self.durasi_target = self.waktu_putar_setengah
-                    self.pwm_arah = -255
+        if (robot.sensor.limit_kanan_capit == 0):robot.motor.capit_putar_kanan = 0
+        else:robot.motor.capit_putar_kanan = -180
 
-            # Aktifkan Motor Putar
+        if ((robot.sensor.limit_kiri_capit == 0) and (robot.sensor.limit_kanan_capit == 0)): return True
 
-
-        # 3. Pengecekan Waktu (Non-Blocking)
-        if self.is_putar_active:
-            robot.motor.capit_putar1 = self.pwm_arah
-            robot.motor.capit_putar2 = -self.pwm_arah
-            writer.kirim_data(robot.motor.get_array_output())
-            now = time.time()
-            if (now - self.putar_start_time) >= self.durasi_target:
-                # Waktu habis, hentikan motor
-                robot.motor.capit_putar1 = 0
-                robot.motor.capit_putar2 = 0
-                writer.kirim_data(robot.motor.get_array_output())
-                
-                # Update status
-                self.posisiPutar = target_posisi
-                self.is_putar_active = False
-                return True # Gerakan selesai
-           
+        
         return False # Masih dalam proses berputar
+
+    def putar_capit_kedepan(self, robot):
+        """
+        Target Posisi: "depan", "tengah", "belakang"
+        Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
+        """
+        # putar belakang
+        robot.motor.capit_putar_kiri = -180
+        robot.motor.capit_putar_kanan = 180
+
+        
+        return False # Masih dalam proses berputar
+
+    def capit_stop(self, robot):
+        """
+        Target Posisi: "depan", "tengah", "belakang"
+        Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
+        """
+        # putar belakang
+        robot.motor.capit_putar_kiri = 0
+        robot.motor.capit_putar_kanan = 0
+
+        
+        return False # Masih dalam proses berputar
+
+    

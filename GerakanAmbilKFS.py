@@ -7,6 +7,7 @@ class GerakanAmbilKFS:
         self.state = "IDLE"
         self.start_time = 0
         self.is_done = False
+        self.then = 0.0
 
         # --- DURASI SETIAP FASE (Atur Sesuai Realita Mekanik) ---
         # Waktu yang dibutuhkan untuk memastikan motor sampai di posisi tujuan
@@ -20,7 +21,7 @@ class GerakanAmbilKFS:
         self.state = "IDLE"
         self.is_done = False
 
-    def jalankan_kombinasi_1(self, robot, writer):
+    def jalankan_kombinasi_1(self, robot):
         """
         Urutan Kombinasi 1 KFS.
         Harus dipanggil berulang-ulang di loop utama (Non-Blocking).
@@ -31,71 +32,64 @@ class GerakanAmbilKFS:
         # ==========================================
         # STATE 0: INISIALISASI
         # ==========================================
-        if self.state == "IDLE":
-            print("[KFS] Memulai Kombinasi 1...")
-            self.start_time = now
-            self.state = "STEADY"
-
-        # ==========================================
-        # STATE 1: STEADY
-        # Capit di posisi belakang, arah putar lurus ke depan (BERSAMAAN)
-        # ==========================================
-        elif self.state == "STEADY":
-            durasi_berjalan = now - self.start_time
-            if durasi_berjalan < self.waktu_steady:
-                # Perintahkan kedua motor sekaligus (Akan jalan bersamaan)
-                self.capit.MajuMundur(robot, writer, "mundur")
-                # self.capit.putar_dinamis(robot, writer, "depan")
-            else:
-                print("[KFS] Menuju Bersiap...")
-                self.start_time = now
-                self.state = "BERSIAP"
-
-        # ==========================================
-        # STATE 2: BERSIAP
-        # Capit maju maks kedepan
-        # ==========================================
-        elif self.state == "BERSIAP":
-            durasi_berjalan = now - self.start_time
-            if durasi_berjalan < self.waktu_bersiap:
-                self.capit.MajuMundur(robot, writer, "maju")
-            else:
-                print("[KFS] Menuju Ambil...")
-                self.start_time = now
-                self.state = "AMBIL"
-
-        # ==========================================
-        # STATE 3: AMBIL DAN LETAKKAN
-        # Putar capit kebelakang, capit bergerak maks kebelakang (BERSAMAAN)
-        # ==========================================
-        elif self.state == "AMBIL":
-            durasi_berjalan = now - self.start_time
-            if durasi_berjalan < self.waktu_ambil:
-                self.capit.MajuMundur(robot, writer, "mundur")
-                self.capit.putar_dinamis(robot, writer, "belakang")
+        match self.state:
+            case "IDLE":
+                selesai = self.capit.putar_capit_kebelakang(robot)
+                self.then = time.time()
+                if (selesai):
+                    self.then = time.time()
+                    self.state = "READY"
+                    
                 
-            else:
-                print("[KFS] Menuju Kembali...")
-                self.start_time = now
-                self.state = "KEMBALI"
 
-        # ==========================================
-        # STATE 4: KEMBALI KE POSISI STEADY
-        # ==========================================
-        elif self.state == "KEMBALI":
-            durasi_berjalan = now - self.start_time
-            if durasi_berjalan < self.waktu_kembali:
-                #  self.capit.MajuMundur(robot, writer, "mundur")
-                 self.capit.putar_dinamis(robot, writer, "depan")
-            else:
-                print("[KFS] Kombinasi 1 SELESAI!")
-                self.state = "FINISHED"
+            case "READY":
+                self.capit.putar_capit_kedepan(robot)
+                self.capit.buka(robot)
+                if (time.time() - self.then > 1.64):
+                    self.capit.capit_stop(robot)
+                    self.then = time.time()
+                    self.state = "CAPITMAJU"
+            
+            case "CAPITMAJU":
+                self.capit.MajuMundur(robot, -800)
+                if (time.time() - self.then > 1):
+                    self.capit.capit_stop(robot)
+                    self.capit.MajuMundur(robot, 0)
+                    self.state = "JEPIT"
+            
+            case "JEPIT":
+                selesai = self.capit.jepit(robot)
+                if (selesai):
+                    self.state = "MUNDUR"
+                    self.then = now
+            
+            case "MUNDUR":
+                self.capit.MajuMundur(robot, 800)
+                if (now - self.then > 0.8):
+                    self.state = "ANGKUT"
+            
+            case "ANGKUT":
+                selesai = self.capit.putar_capit_kebelakang(robot)
+                if (selesai):
+                    self.state = "LEPAS"
+                    self.then = now
+            
+            case "LEPAS":
+                selesai = self.capit.buka(robot)
+                if (selesai):
+                    self.state = "BACK"
+                    self.then = now
+            
+            case "BACK":
+                self.capit.putar_capit_kedepan(robot)
+                if (time.time() - self.then > 0.2):
+                    self.then = time.time()
+                    self.state = "FINISHED"
+            
 
-        # ==========================================
-        # STATE 5: FINISHED
-        # ==========================================
-        elif self.state == "FINISHED":
-            self.is_done = True
-            return True
+            
+
+            case "FINISHED":
+                return True
 
         return False # Urutan masih berjalan

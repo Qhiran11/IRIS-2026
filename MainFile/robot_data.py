@@ -11,6 +11,7 @@ class SensorData:
         self.jarak_kiri = 0
         self.sensor_jarak = 0
         self.proxi_belakang = 0
+        self.proxi_depan = 1
 
         # sensor ultrasonic
         self.ultrasonic_kiri = 0
@@ -19,15 +20,22 @@ class SensorData:
         
         # --- DATA BINARY (70% 0 atau 1) ---
         self.kfs_terdeteksi = False
-        self.limit_switch_atas = False
-        self.limit_switch_bawah = False
+        self.limit_kanan_capit = 0
+        self.limit_kiri_capit = 0
+            
+        self.limit_capitBuka      = 1
+        self.limit_capitJepit      = 1
+
+
         self.sensor_garis_1 = False
         self.sensor_garis_2 = False
-        self.tombol_start = False
+        self.tombol_start = 0
         
         # Data Cadangan
-        self.cadangan_1 = 0
-        self.cadangan_2 = 0
+        self.kompas2 = 0
+        self.kompas3 = 0
+
+        self.posisi_di_hutan = 0
 
     def update_dari_array(self, arr):
         """
@@ -60,36 +68,51 @@ class SensorData:
             self.ultrasonic_kanan = arr[2]
             self.ultrasonic_belakang = arr[4]
 
-            self.jarak_kiri       = arr[5]
+            self.proxi_belakang      = arr[5]   
             
-            self.sensor_garis_1   = bool(arr[6])
-            self.sensor_garis_2   = bool(arr[7])
-            self.tombol_start     = bool(arr[8])
+            self.limit_kanan_capit   = arr[6]
+            self.limit_kiri_capit   = arr[7]
             
-            self.cadangan_1      = arr[9]
-            self.cadangan_2      = arr[10]
-            self.cadangan_3      = arr[11]
+            self.limit_capitBuka      = arr[8]
+            self.limit_capitJepit      = arr[9]
+
+            self.proxi_depan      = arr[10]
+            
+            self.kompas2      = arr[11]
+            self.kompas3      = arr[12]
+
 
 
 class MotorCommand:
     def __init__(self):
         # Output untuk 6 Motor (PWM)
-        self.m1_pw = 0
-        self.m2_pw = 0
-        self.m3_pwm = 0
-        self.m4_pwm = 0
-        self.m5_pwm = 0
-        self.m6_pwm = 0
+        self.m1_pw = 0  # data 0
+        self.m2_pw = 0  # data 1
+        self.m3_pwm = 0  # data 2
+        self.m4_pwm = 0  # data 3
+        self.m5_pwm = 0  # data 4
+        self.m6_pwm = 0  # data 5
+
+        self.mDorong1 = 0  # data 6
+        self.mDorong2 = 0  # data 7
         
         # Kontrol Relay / Gripper
-        self.relay_pompa = 0
-        self.capit_putar1 = 0
-        self.capit_putar2 = 0
-        self.capit_jepit = 0
+        self.capit_putar_kiri = 0  # data 8
+        self.capit_putar_kanan = 0 # data 9
+        self.capit_jepit = 0 # data 10
         
         # Kontrol Stepper
-        self.stepper1 = 0 # M11
-        self.motorlain = 0 # M12
+        self.stepper1 = 0 # data 11
+        self.pwLogic = 0 # data 12
+
+        
+        self.cadangan1 = 0 # data 13
+        self.cadangan2 = 0 # data 14
+        self.cadangan3 = 0 # data 15
+        self.cadangan4 = 0 # data 16
+        self.cadangan5 = 0 # data 17
+        self.cadangan6 = 0 # data 18
+        self.cadangan7 = 0 # data 19
 
     def get_array_output(self):
         """
@@ -98,10 +121,12 @@ class MotorCommand:
         arr = [
             self.m1_pw, self.m2_pw, self.m3_pwm, 
             self.m4_pwm, self.m5_pwm, self.m6_pwm,
-            self.motorlain, self.relay_pompa,
-            self.capit_putar1, self.capit_putar2,
+            self.mDorong1, self.mDorong2,
+            self.capit_putar_kiri, self.capit_putar_kanan,
             self.capit_jepit, 
-            self.stepper1, self.motorlain
+            self.stepper1, self.pwLogic,
+            self.cadangan1, self.cadangan2, self.cadangan3, 
+            self.cadangan4, self.cadangan5, self.cadangan6, self.cadangan7
         ]
         
         return arr

@@ -4,12 +4,11 @@ import numpy as np
 
 
 
-class OpticalEncoder:
-
+class MappingArena:
     def __init__(self, sensitivity=1.0, deadzone=0.5):
-
-        # State awal
-
+        self.jumlah_Naik = 0
+        self.jumlah_Turun = 0
+        # State a
         self.x = 0.0
 
         self.y = 0.0

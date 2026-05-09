@@ -4,7 +4,7 @@ import time
 
 class SensorReader:
     def __init__(self, port='', baudrate=115200):
-        """Inisialisasi koneksi ke STM32"""
+        """Inisialisasi koneksi ke ARDUINO MEGA"""
         self.port = port
         self.baudrate = baudrate
         self.ser = None
@@ -12,23 +12,25 @@ class SensorReader:
 
     def connect(self):
         try:
-            # Timeout kecil agar program tidak freeze jika STM32 mati
+            # Timeout kecil agar program tidak freeze jika ARDUINO MEGA mati
             self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
-            print(f"[INPUT] Berhasil terhubung ke STM32 di port {self.port}")
+            print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}")
+            return True
         except Exception as e:
-            print(f"[INPUT] Gagal terhubung ke STM32: {e}")
+            print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")
+            return False
 
     def baca_data(self):
         """
-        Fungsi ini dipanggil terus-menerus oleh ProsesUtama.py.
-        Tugasnya membaca buffer, memvalidasi paket, dan mereturn array.
+        Membaca buffer, memvalidasi paket 13 data int16, dan mereturn array.
         """
         if not self.ser or not self.ser.is_open:
-            return None # Kembalikan None jika tidak ada koneksi
+            return None 
 
         try:
-            # Buffer harus memiliki minimal 29 byte (2 Header + 24 Data + 1 CRC + 2 Footer)
-            while self.ser.in_waiting >= 29:
+            # Buffer minimal 31 byte:
+            # [2 Header] + [26 Data (13 * 2)] + [1 CRC] + [2 Footer] = 31 byte
+            while self.ser.in_waiting >= 31:
                 
                 # 1. Sinkronisasi Header 1 (0xAA)
                 if self.ser.read(1) == b'\xAA':
@@ -36,36 +38,38 @@ class SensorReader:
                     # 2. Sinkronisasi Header 2 (0x55)
                     if self.ser.read(1) == b'\x55':
                         
-                        # 3. Baca sisa paket (27 byte)
-                        packet = self.ser.read(27)
+                        # 3. Baca sisa paket (29 byte)
+                        # Terdiri dari: 26 byte data + 1 byte CRC + 2 byte Footer
+                        packet = self.ser.read(29)
                         
-                        if len(packet) == 27:
-                            data_24b = packet[:24]
-                            received_crc = packet[24]
-                            footer = packet[25:27]
+                        if len(packet) == 29:
+                            data_payload = packet[:26]   # 26 byte data murni
+                            received_crc = packet[26]    # Byte ke-27 (indeks 26)
+                            footer = packet[27:29]       # 2 byte terakhir
                             
                             # 4. Validasi Footer
                             if footer == b'\x0D\x0A':
                                 
                                 # 5. Hitung ulang CRC
                                 calc_crc = 0
-                                for b in data_24b:
+                                for b in data_payload:
                                     calc_crc ^= b
                                     
                                 # 6. Validasi CRC
                                 if calc_crc == received_crc:
                                     
-                                    # 7. Ekstrak 24 byte data kembali menjadi array 12 integer
-                                    # '<12h' = Little Endian, 12 buah short integer (16-bit)
-                                    received_speeds = struct.unpack('<12h', data_24b)
+                                    # 7. Ekstrak 26 byte data kembali menjadi array 13 integer
+                                    # '<13h' = Little Endian, 13 buah short integer (16-bit)
+                                    # Indeks: 0:Heading, 1:VL, 2-4:US, 5:Prox B, 6-9:Limit, 10:Prox D, 11:Pitch, 12:Roll
+                                    decoded_data = struct.unpack('<13h', data_payload)
                                     
-                                    # KEMBALIKAN ARRAY KE PROSES UTAMA
-                                    return list(received_speeds)
+                                    return list(decoded_data)
                                 else:
                                     # print("CRC Error!")
                                     pass
         except Exception as e:
-            # Menangkap error jika kabel tercabut di tengah jalan
+            # Menangkap error jika kabel tercabut atau gangguan serial
+            # print(f"Error pembacaan: {e}")
             pass
             
-        return None # Jika paket belum lengkap atau rusak, kembalikan None
+        return None
