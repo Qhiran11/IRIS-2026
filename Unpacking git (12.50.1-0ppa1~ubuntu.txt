@@ -4,3 +4,14 @@ sudo nmcli device wifi connect 'NAMA_WIFI' password 'PASSWORD_WIFI'
 
 
 git clone -b NANOPA --single-branch https://github.com/Qhiran11/IRIS-2026.git .
+
+
+git config --global core.mergeoptions --no-edit
+
+
+
+git config --global user.email "emailanda@gmail.com"
+
+
+
+git config --global user.name "Nama Anda"

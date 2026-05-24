@@ -28,7 +28,7 @@ def main():
 
     robot = Robot()
     
-    sensor = SensorReader(port='COM36', baudrate=115200) 
+    sensor = SensorReader(port='/dev/ttyACM0', baudrate=115200) 
     writer = ArduinoDueWriter(port='COM6', baudrate=115200)
 
     arena = MappingArena()
