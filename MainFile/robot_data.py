@@ -17,6 +17,9 @@ class SensorData:
         self.tombak_x = 0
         self.tombak_y = 0
         self.koreksi_pid_tombak = 0
+
+        # Di dalam class Sensor atau RobotData Anda
+        self.data_qr = ""
         
 
         # sensor ultrasonic

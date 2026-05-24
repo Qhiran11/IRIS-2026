@@ -21,6 +21,7 @@ from GerakanDasar import GerakanDasar
 
 
 from InputKamera import KameraSensor
+from InputKameraQR import DeteksiQR
 
 def main():
     print("Memulai Program Utama KRAI...")
@@ -48,7 +49,9 @@ def main():
     masukMainhua = GerakanNaikTurun()
     zona3 = Zona3()
 
-    kamera = KameraSensor(robot.sensor, tampilkan_video=False)
+    # kamera = KameraSensor(robot.sensor, tampilkan_video=False)
+    kamera = DeteksiQR(robot)
+    kamera.start()
 
     prosesAmbilKfs = False
 
