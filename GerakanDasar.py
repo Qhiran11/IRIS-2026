@@ -51,7 +51,7 @@ class GerakanDasar:
     def stop(self, robot):
         self._apply_motor(robot, 0, 0, 0, 0)
         
-        robot.motor.m1_pwm = robot.motor.m2_pwm = robot.motor.mDorong1 = robot.motor.mDorong2 = 0
+        robot.motor.relay_pw_kanan = robot.motor.relay_pw_kiri = robot.motor.mDorong1 = robot.motor.mDorong2 = 0
         
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
@@ -184,22 +184,33 @@ class GerakanDasar:
 
     def naik(self, robot, speed = -250):
         """
-        Menggerakkan motor M5 dan M6 untuk mengangkat lifter.
-        Pastikan pin M5 dan M6 sudah benar di hardware.
-        Target: Menekan tombol lifter di ketinggian tertentu.
+        Menggerakkan motor PW (kiri & kanan) untuk mengangkat lifter.
+        Menggunakan relay: speed < 0 berarti naik, speed > 0 turun, speed == 0 mati.
         """
-
-        robot.motor.m2_pw = speed
-        robot.motor.m1_pw = speed
+        if speed < 0:
+            robot.motor.relay_pw_kanan = -1
+            robot.motor.relay_pw_kiri = -1
+        elif speed > 0:
+            robot.motor.relay_pw_kanan = 1
+            robot.motor.relay_pw_kiri = 1
+        else:
+            robot.motor.relay_pw_kanan = 0
+            robot.motor.relay_pw_kiri = 0
         
     def turun(self, robot, speed):
         """
-        Menggerakkan motor M5 dan M6 untuk menurunkan lifter.
+        Menggerakkan motor PW (kiri & kanan) untuk menurunkan lifter.
+        Menggunakan relay: speed < 0 berarti naik, speed > 0 turun, speed == 0 mati.
         """
-        # Kecepatan: Kita set -85 (Putaran Negatif untuk turun)
-        
-        robot.motor.m2_pw = speed
-        robot.motor.m1_pw = speed
+        if speed < 0:
+            robot.motor.relay_pw_kanan = -1
+            robot.motor.relay_pw_kiri = -1
+        elif speed > 0:
+            robot.motor.relay_pw_kanan = 1
+            robot.motor.relay_pw_kiri = 1
+        else:
+            robot.motor.relay_pw_kanan = 0
+            robot.motor.relay_pw_kiri = 0
 
 
     def maju_roda_2(self, robot):
@@ -267,5 +278,28 @@ class GerakanDasar:
             if self.delay.check_delay(0.1):
                 return True
         return False
+
+    def geser_ke_titik_kanan(self, robot, target_jarak):
+        """
+        Menggeser robot secara lateral (kiri/kanan) menuju target jarak dari dinding kanan.
+        Menggunakan dual PID: 
+        - pid_kompas2 untuk menjaga orientasi robot tetap lurus (target_angle)
+        - pid_jarak untuk mengontrol kecepatan geser lateral menuju target_jarak
+        """
+        kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
+        jarak_sekarang = robot.sensor.ultrasonic_kanan
+        
+        if jarak_sekarang <= 0 or jarak_sekarang == -1:
+            speed_geser = 0
+        else:
+            speed_geser = self.pid_jarak.compute(target_jarak, jarak_sekarang)
+            
+        # Batasi kecepatan geser lateral
+        speed_geser = max(-self.base_speed, min(self.base_speed, speed_geser))
+        
+        # Formasi Strafe Lateral dengan koreksi sudut
+        self._apply_motor(robot, 
+                          -speed_geser - kor_sudut,  speed_geser + kor_sudut, 
+                           speed_geser - kor_sudut, -speed_geser + kor_sudut)
    
     

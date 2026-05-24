@@ -19,6 +19,9 @@ from MappingHutan import MappingHutan
 
 from GerakanDasar import GerakanDasar
 
+
+from InputKamera import KameraSensor
+
 def main():
     print("Memulai Program Utama KRAI...")
     # ... (print logo Anda) ...
@@ -26,7 +29,7 @@ def main():
     robot = Robot()
     
     sensor = SensorReader(port='COM36', baudrate=115200) 
-    writer = ArduinoDueWriter(port='COM48', baudrate=115200)
+    writer = ArduinoDueWriter(port='COM6', baudrate=115200)
 
     arena = MappingArena()
     hutan = MappingHutan()
@@ -45,6 +48,8 @@ def main():
     masukMainhua = GerakanNaikTurun()
     zona3 = Zona3()
 
+    kamera = KameraSensor(robot.sensor, tampilkan_video=False)
+
     prosesAmbilKfs = False
 
     bool_putar_ganti = "NAIK"
@@ -59,6 +64,7 @@ def main():
 
     # ... (Kode inisialisasi di atas tetap sama) ...
     try:
+        # kamera.start() # Mulai sensor kamera di background
         # time.sleep(5)
         then = time.time()
         while True:
@@ -73,7 +79,10 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
 
-
+                # if robot.sensor.tombak_terdeteksi:
+                #     # Anda bisa menggunakan nilai ini untuk logika pergerakan motor nantinya
+                #     posisi_x = robot.sensor.tombak_x
+                #     posisi_y = robot.sensor.tombak_y
                 
                  
                 # print (f"Motor : r1 {robot.motor.m1_pwm}  robot {robot.motor.m2_pwm}  r3 {robot.motor.m3_pwm}  r4 {robot.motor.m4_pwm}  r5 {robot.motor.m5_pwm}  r6 {robot.motor.m6_pwm} ")
@@ -146,9 +155,10 @@ def main():
                             STATE = "GO"
                             then = now
                     case "GO":
-                        selesai = rakit.jalankan(robot, gerak, 90, 20)
+                        selesai = rakit.jalankan(robot, gerak, 90, 10)
                         if selesai:
-                            STATE = "GOGO"
+                            STATE = "GOGO1"
+                            break
                             then = now
                     case "GOGO":
                         selesai = masukMainhua._proses_ke_tengah(robot, gerak)

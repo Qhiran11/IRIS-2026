@@ -104,9 +104,9 @@ class SensorData:
 
 class MotorCommand:
     def __init__(self):
-        # Output untuk 6 Motor (PWM)
-        self.m1_pw = 0  # data 0
-        self.m2_pw = 0  # data 1
+        # Output untuk 6 Motor (PW: Relay, DC: PWM)
+        self.relay_pw_kanan = 0  # data 0
+        self.relay_pw_kiri = 0   # data 1
         self.m3_pwm = 0  # data 2
         self.m4_pwm = 0  # data 3
         self.m5_pwm = 0  # data 4
@@ -124,9 +124,9 @@ class MotorCommand:
         self.stepper1 = 0 # data 11
         self.pwLogic = 0 # data 12
 
-        
-        self.cadangan1 = 0 # data 13
-        self.cadangan2 = 0 # data 14
+        # Relay tambahan (pin 40 & pin 42)
+        self.relay_tambahan1 = 0 # data 13
+        self.relay_tambahan2 = 0 # data 14
         self.cadangan3 = 0 # data 15
         self.cadangan4 = 0 # data 16
         self.cadangan5 = 0 # data 17
@@ -135,16 +135,16 @@ class MotorCommand:
 
     def get_array_output(self):
         """
-        Mengemas variabel menjadi array[13] untuk dikirim ke Arduino Due.
+        Mengemas variabel menjadi array[20] untuk dikirim ke Arduino Due.
         """
         arr = [
-            self.m1_pw, self.m2_pw, self.m3_pwm, 
+            self.relay_pw_kanan, self.relay_pw_kiri, self.m3_pwm, 
             self.m4_pwm, self.m5_pwm, self.m6_pwm,
             self.mDorong1, self.mDorong2,
             self.capit_putar_kiri, self.capit_putar_kanan,
             self.capit_jepit, 
             self.stepper1, self.pwLogic,
-            self.cadangan1, self.cadangan2, self.cadangan3, 
+            self.relay_tambahan1, self.relay_tambahan2, self.cadangan3, 
             self.cadangan4, self.cadangan5, self.cadangan6, self.cadangan7
         ]
         
