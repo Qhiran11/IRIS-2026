@@ -33,81 +33,75 @@ class GerakanAmbilKFS:
         # ==========================================
         # STATE 0: INISIALISASI
         # ==========================================
-        match self.state:
-            case "IDLE":
-                selesai = self.capit.putar_capit_kebelakang(robot)
+        if self.state == "IDLE":
+            selesai = self.capit.putar_capit_kebelakang(robot)
+            self.then = time.time()
+            if (selesai):
                 self.then = time.time()
-                if (selesai):
-                    self.then = time.time()
-                    self.state = "READY"
-                    
+                self.state = "READY"
                 
-
-            case "READY":
-                self.capit.putar_capit_kedepan(robot)
-                self.capit.buka(robot)
-                gerak.base_speed  = 30
-                gerak.max_pwm = gerak.base_speed
-                if (time.time() - self.then > 1.5):
-                    self.capit.capit_stop(robot)
-                    self.then = time.time()
-                    self.state = "ROBOTMAJU"
-            
-            case "ROBOTMAJU":
-                if (robot.sensor.jarak_depan <= 100):
-                    gerak.stop(robot)
-                    self.then = time.time()
-                    self.state = "CAPITMAJU"
-                else:
-                    gerak.maju(robot)
-                
-            
-            case "CAPITMAJU":
-                self.capit.MajuMundur(robot, -800)
-                if (time.time() - self.then > 1):
-                    self.capit.capit_stop(robot)
-                    self.capit.MajuMundur(robot, 0)
-                    self.state = "JEPIT"
-            
-            case "JEPIT":
-                selesai = self.capit.jepit(robot)
-                if (selesai):
-                    self.state = "MUNDUR"
-                    self.then = now
-            
-            case "MUNDUR":
-                self.capit.MajuMundur(robot, 800)
-                if (now - self.then > 0.8):
-                    self.state = "ANGKUT"
-            
-            case "ANGKUT":
-                selesai = self.capit.putar_capit_kebelakang(robot)
-                if (selesai):
-                    self.state = "LEPAS"
-                    self.then = now
-            
-            case "LEPAS":
-                selesai = self.capit.buka(robot)
-                if (selesai):
-                    self.state = "BACK"
-                    self.then = now
-            
-            case "BACK":
-                self.capit.putar_capit_kedepan(robot)
-                if (time.time() - self.then > 0.5):
-                    self.capit.capit_stop(robot)
-                    self.then = time.time()
-                    self.state = "FINISHED"
-            
-
-            
-
-            case "FINISHED":
+        elif self.state == "READY":
+            self.capit.putar_capit_kedepan(robot)
+            self.capit.buka(robot)
+            gerak.base_speed  = 30
+            gerak.max_pwm = gerak.base_speed
+            if (time.time() - self.then > 1.5):
                 self.capit.capit_stop(robot)
-                robot.motor.stepper1 = 0
+                self.then = time.time()
+                self.state = "ROBOTMAJU"
+        
+        elif self.state == "ROBOTMAJU":
+            if (robot.sensor.jarak_depan <= 100):
+                gerak.stop(robot)
+                self.then = time.time()
+                self.state = "CAPITMAJU"
+            else:
+                gerak.maju(robot)
+        
+        elif self.state == "CAPITMAJU":
+            self.capit.MajuMundur(robot, -800)
+            if (time.time() - self.then > 1):
+                self.capit.capit_stop(robot)
+                self.capit.MajuMundur(robot, 0)
+                self.state = "JEPIT"
+        
+        elif self.state == "JEPIT":
+            selesai = self.capit.jepit(robot)
+            if (selesai):
+                self.state = "MUNDUR"
+                self.then = now
+        
+        elif self.state == "MUNDUR":
+            self.capit.MajuMundur(robot, 800)
+            if (now - self.then > 0.8):
+                self.state = "ANGKUT"
+        
+        elif self.state == "ANGKUT":
+            selesai = self.capit.putar_capit_kebelakang(robot)
+            if (selesai):
+                self.state = "LEPAS"
+                self.then = now
+        
+        elif self.state == "LEPAS":
+            selesai = self.capit.buka(robot)
+            if (selesai):
+                self.state = "BACK"
+                self.then = now
+        
+        elif self.state == "BACK":
+            self.capit.putar_capit_kedepan(robot)
+            if (time.time() - self.then > 0.5):
+                self.capit.capit_stop(robot)
+                self.then = time.time()
+                self.state = "FINISHED"
+        
+        elif self.state == "FINISHED":
+            self.capit.capit_stop(robot)
+            robot.motor.stepper1 = 0
 
-                return True
-
+            return True     
+        
+        
         return False # Urutan masih berjalan
 
 
