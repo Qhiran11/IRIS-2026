@@ -15,3 +15,8 @@ git config --global user.email "emailanda@gmail.com"
 
 
 git config --global user.name "Nama Anda"
+
+
+git pull origin NANOPA
+
+python3 MainFile/ProsesUtama2.py

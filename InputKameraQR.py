@@ -96,7 +96,7 @@ if __name__ == "__main__":
     robot_tiruan = MockRobot()
     
     # 2. Inisialisasi
-    qr_detector = DeteksiQR(robot_tiruan, tampilkan_video=True)
+    qr_detector = DeteksiQR(robot_tiruan, tampilkan_video=False)
 
     try:
         print("\n[TESTING] Program dimulai. Bersiap menyalakan kamera...")
