@@ -1,16 +1,18 @@
 import time
+from MappingHutan import MappingHutan
 
 
 class GerakanNaikTurun:
     def __init__(self):
         self.state = "IDLE"
-        self.sub_state = "SERONG" # Untuk mengatur langkah di dalam fungsi tertentu
+        self.sub_state = "SIAP" # Untuk mengatur langkah di dalam fungsi tertentu
         self.sub_state1 = "PERISAPAN"
         self.sub_state2 = "PERISAPAN"
         self.start_time = 0
         self.is_done = False
         self.then = time.time()
         self.jumlahNaik = 0
+        self.Hutan = MappingHutan()
 
     def reset(self):
         self.state = "IDLE"
@@ -26,14 +28,22 @@ class GerakanNaikTurun:
         now = time.time()
         
         match self.sub_state:
+            case "SIAP":
+                gerak.base_speed = gerak.max_pwm = 140
+                gerak.maju_diagonal_kanan(robot)
+                self.start_time = now
+                self.sub_state = "SERONG"
+            
+            
             case "SERONG":
                 gerak.base_speed = gerak.max_pwm = 140
                 gerak.maju_diagonal_kanan(robot)
-                
-                if (robot.sensor.jarak_depan != -1 and robot.sensor.jarak_depan < 550):
-                    gerak.stop(robot)
-                    self.sub_state = "SAMPING"
-                    self.start_time = now
+                if (now - self.start_time > 1.5):                    
+                    if (robot.sensor.jarak_depan > 0 and robot.sensor.jarak_depan < 500):
+                        gerak.stop(robot)
+                        self.sub_state = "SAMPING"
+                        self.start_time = now
+            
             
             case "SAMPING":
                 # Panggil fungsi maju ke jarak 2cm
@@ -112,32 +122,43 @@ class GerakanNaikTurun:
                 gerak.turun(robot, 160)
                 if (now - self.then > 2):
                     gerak.stop(robot)
-                    self.sub_state1 = "MAJUPASKAN"
+                    self.sub_state1 = "TENGAHPASKAN"
                     self.then = time.time()
  
 
-            
+            case "TENGAHPASKAN":
+                gerak.base_speed = gerak.max_pwm = 30
+
+                if (self.Hutan.index_rute + 1) in [1, 3, 5, 8]:
+                # if (robot.sensor.ultrasonic_kiri == 0 or robot.sensor.ultrasonic_kiri > 30 or robot.sensor.ultrasonic_kanan > 30  or robot.sensor.ultrasonic_kanan == 0):
+                    gerak.stop(robot)          
+                    self.sub_state1 = "MAJUPASKAN"
+                    self.then = time.time()
+                else:
+                    if gerak.geser_ke_tengah2(robot, 22):
+                        gerak.stop(robot)          
+                        self.sub_state1 = "MAJUPASKAN"
+                        self.then = time.time()
+
+
             case "MAJUPASKAN":
-               
-                gerak.base_speed = gerak.max_pwm = 50
-                gerak.maju(robot)
-                if (robot.sensor.jarak_depan > 0 and robot.sensor.jarak_depan < 315 ):
-                    gerak.stop(robot)
-                    self.sub_state1 = "PERISAPAN"
-                    return True
-                elif (robot.sensor.jarak_depan == -1 or robot.sensor.jarak_depan > 1200 ):
-                    return True
-                    self.sub_state1 = "PERISAPAN"
+                if robot.sensor.jarak_depan > 800 or robot.sensor.jarak_depan <= 0:
+                    gerak.maju(robot)
+                    if (now - self.then > 1):
+                        gerak.stop(robot)
+                        self.sub_state1 = "PERISAPAN"
+                        return True
+                else:
+                    if gerak.maju_ke_titik(robot, 350):
+                        gerak.stop(robot)
+                        self.sub_state1 = "PERISAPAN"
+                        return True
 
         
                 
                         
 
-            case "TENGAHPASKAN":
-                gerak.base_speed = gerak.max_pwm = 50
-                if gerak.geser_ke_tengah2(robot, 22):
-                    gerak.stop(robot)
-                    self.jumlahNaik = self.jumlahNaik + 1 
+
 
 
         # print("jumlah Naik : ", self.jumlahNaik, " sub_state1 : ", self.sub_state1)\
@@ -153,7 +174,7 @@ class GerakanNaikTurun:
         
         match self.sub_state2:
             case "PERISAPAN":
-                gerak.base_speed = gerak.max_pwm = 20
+                gerak.base_speed = gerak.max_pwm =  20
                 self.sub_state2 = "MUNDUR"
                 # self.sub_state2 = "BODY2TURUN"
                 self.then = now
@@ -169,6 +190,7 @@ class GerakanNaikTurun:
             
             case "PASKAN":
                 # Panggil fungsi maju ke jarak 2cm
+                
                 gerak.hadap_sudut(robot)
                 
                 # Cek apakah sudah dekat tembok depan

@@ -1,3 +1,6 @@
+import time
+from NonBlockingDelay import NonBlockingDelay
+
 class PIDController:
     def __init__(self, Kp=8.0, Ki=0.001, Kd=15.0):
         # Parameter diambil dari PID.ino [cite: 28]
@@ -28,11 +31,12 @@ class GerakanDasar:
     def __init__(self):
         # 1. Buat dua objek PID yang berbeda
         self.pid_kompas = PIDController(Kp=8.0, Ki=0.001, Kd=15.0)
-        self.pid_kompas2 = PIDController(Kp=5.0, Ki=0.001, Kd=10.0)
+        self.pid_kompas2 = PIDController(Kp=10.0, Ki=0.001, Kd=10.0)
         # Tuning PID Jarak berbeda: Butuh Kp lebih besar agar agresif di awal, 
         # Ki = 0, Kd sedang untuk mengerem. (Silakan kalibrasi nanti)
-        self.pid_jarak = PIDController(Kp=8.0, Ki=0.001, Kd=15.0) 
+        self.pid_jarak = PIDController(Kp=8.0, Ki=0.000, Kd=10.0) 
         
+        self.delay = NonBlockingDelay()
         self.base_speed = 85 
         self.max_pwm = 120   
         self.target_angle = 0
@@ -50,6 +54,7 @@ class GerakanDasar:
         robot.motor.m1_pwm = robot.motor.m2_pwm = robot.motor.mDorong1 = robot.motor.mDorong2 = 0
         
         self.pid_kompas.reset()
+        self.pid_kompas2.reset()
         self.pid_jarak.reset()
 
     # --- 10 GERAKAN UTAMA ---
@@ -151,17 +156,26 @@ class GerakanDasar:
                            speed_geser, -speed_geser)
     
     def maju_ke_titik(self, robot, target_jarak):
-        """Maju ke depan hingga jarak tertentu dari tembok depan"""
+        jarak = robot.sensor.jarak_depan
+        if jarak <= 0:
+            return False
+        speed_approach = 60 
         kor_sudut = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        
-        # Hitung kecepatan berdasarkan jarak depan
-        speed_maju = self.pid_jarak.compute(target_jarak, robot.sensor.jarak_depan)
-        speed_maju = max(-45, min(45, speed_maju))
-        
-        # Rumus Maju + Koreksi Kompas
-        self._apply_motor(robot, 
-                          speed_maju - kor_sudut, speed_maju + kor_sudut, 
-                          speed_maju - kor_sudut, speed_maju + kor_sudut)
+        if jarak > target_jarak + 3:
+            self._apply_motor(robot, 
+                              speed_approach - kor_sudut, speed_approach + kor_sudut, 
+                              speed_approach - kor_sudut, speed_approach + kor_sudut)
+                              
+        elif jarak < target_jarak - 3:
+            self._apply_motor(robot, 
+                              -speed_approach - kor_sudut, -speed_approach + kor_sudut, 
+                              -speed_approach - kor_sudut, -speed_approach + kor_sudut)                
+        else:
+            self.stop(robot)
+            return True
+            
+        return False
+
     def hadap_sudut(self, robot):
         """Berputar di tempat untuk mengunci sudut tertentu menggunakan PID"""
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
@@ -242,13 +256,16 @@ class GerakanDasar:
         jarak = robot.sensor.ultrasonic_kanan
 
         
-        if jarak > target_kanan+3:
+        if jarak > target_kanan+2:
             self.kanan(robot)
-        elif jarak < target_kanan-3:
+            self.delay.last_time = time.time()
+        elif jarak < target_kanan-2:
             self.kiri(robot)
-        else : #target_kanan < jarak+3 and target_kanan > jarak-3:
+            self.delay.last_time = time.time()
+        else: 
             self.stop(robot)
-            return True
+            if self.delay.check_delay(0.1):
+                return True
         return False
    
     

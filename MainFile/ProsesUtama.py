@@ -14,6 +14,7 @@ from GerakanAmbilPasangRakitSenjata import RakitSenjata
 from GerakanNaikTurun import GerakanNaikTurun
 from MappingArena import MappingArena
 from Zona3 import Zona3
+from MappingHutan import MappingHutan
 
 
 from GerakanDasar import GerakanDasar
@@ -28,6 +29,7 @@ def main():
     writer = ArduinoDueWriter(port='COM48', baudrate=115200)
 
     arena = MappingArena()
+    hutan = MappingHutan()
 
     arena.jumlah_Naik = 3
 
@@ -43,9 +45,14 @@ def main():
     masukMainhua = GerakanNaikTurun()
     zona3 = Zona3()
 
+    prosesAmbilKfs = False
+
     bool_putar_ganti = "NAIK"
 
     STATE = "READY"
+    TEMP_STATE = ""
+
+    detectKfs = ""
     # STATE = "PROSESTURUN"
     
 
@@ -66,14 +73,13 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
 
+
                 
-                # Print untuk debugging
-                # print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | ultr_kiri : {robot.sensor.ultrasonic_kiri} | ultr_kanan : {robot.sensor.ultrasonic_kanan} | ultrasonic_belakang : {robot.sensor.ultrasonic_belakang} ")
-                # print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | kiri : {robot.sensor.ultrasonic_kiri} | kanan : {robot.sensor.ultrasonic_kanan} | blkng : {robot.sensor.ultrasonic_belakang} | K2: {robot.sensor.kompas2} | K3: {robot.sensor.kompas3} ")
+                 
                 # print (f"Motor : r1 {robot.motor.m1_pwm}  robot {robot.motor.m2_pwm}  r3 {robot.motor.m3_pwm}  r4 {robot.motor.m4_pwm}  r5 {robot.motor.m5_pwm}  r6 {robot.motor.m6_pwm} ")
                 # print(f" sensor {robot.sensor.proxi_belakang}, depan {robot.sensor.jarak_depan}")
                 # print(f"limit_kanan_capit : {robot.sensor.limit_kanan_capit} | limit_kiri_capit : {robot.sensor.limit_kiri_capit}")
-                print(f"limit_kanan_capit : {robot.sensor.limit_capitBuka} | limit_kiri_capit : {robot.sensor.limit_capitJepit} | proxi_depan : {robot.sensor.proxi_depan}")
+                # print(f"Baca KFS : {robot.sensor.sensor_kfs_depan}")
                 # 2. TENTUKAN TARGET ARAH (Opsional, 0 adalah lurus mengikuti saat robot dinyalakan)
                 # gerak.target_angle = -180  
 
@@ -133,78 +139,102 @@ def main():
                 # robot.motor.mDorong1 = 100
                 # robot.motor.mDorong2 = -100
 
-                # match STATE:
-                #     case "READY":
-                #         gerak.stop(robot)
-                #         if (now - then > 2.0):
-                #             STATE = "GO"
-                #             then = now
-                #     case "GO":
-                #         selesai = rakit.jalankan(robot, gerak, 90, 20)
-                #         if selesai:
-                #             STATE = "GOGO"
-                #             then = now
-                #     case "GOGO":
-                #         selesai = masukMainhua._proses_ke_tengah(robot, gerak)
-                #         if selesai:
-                #             STATE = "NAIK"
-                #             then = now
-                #     case "NAIK":
-                #         selesai = masukMainhua._proses_naik(robot, gerak)
-                #         if (selesai):
-                #             STATE = "HITUNGNAIK"
-                #             then = now
+                match STATE:
+                    case "READY":
+                        gerak.stop(robot)
+                        if (now - then > 2.0):
+                            STATE = "GO"
+                            then = now
+                    case "GO":
+                        selesai = rakit.jalankan(robot, gerak, 90, 20)
+                        if selesai:
+                            STATE = "GOGO"
+                            then = now
+                    case "GOGO":
+                        selesai = masukMainhua._proses_ke_tengah(robot, gerak)
+                        if selesai:
+                            STATE = "CEK_RUTE"
+                            then = now
+
+                    case "AMBILKFS":
+                        selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
+                        if selesai:
+                            robot.jumlah_kfs = robot.jumlah_kfs + 1
+                            # print("Ambil KFS Berhasil")
+                            STATE = "CEK_RUTE"
+                            
+                    # ==============================================================
+                    # SIKLUS NAVIGASI OTOMATIS
+                    # ==============================================================
+                    case "CEK_RUTE":
+                        move = hutan.get_next_move()
                         
-                #     case "HITUNGNAIK":
-                #         arena.jumlah_Naik = arena.jumlah_Naik - 1
-                #         print(arena.jumlah_Naik)
-                #         if (arena.jumlah_Naik > 0):
-                #             STATE = "NAIK"
-                #         else:
-                #             gerak.stop(robot)
-                #             gerak.target_angle = -180
-                #             time.sleep(1)
-                #             then = now
-                #             STATE = "PENGECEKAN"
+                        if move is None:
+                            print("[NAVIGASI] Tiba di Zona 3!")
+                            STATE = "ZONA3"
+                        else:
+                            aksi, sudut_hadap, petak_tujuan = move
+                            
+                            # Set target kompas sesuai perintah otak navigasi
+                            gerak.target_angle = sudut_hadap 
+                            
+                            print(f"[NAVIGASI] Menuju Petak {petak_tujuan}. Aksi: {aksi}. Hadap: {sudut_hadap}°")
+                            
+                            # Beri waktu robot untuk berputar DULU sebelum eksekusi mekanik
+                            then = now
+                            STATE = "PUTAR_POSISI"
+                            TEMP_STATE = aksi # Simpan NAIK atau TURUN di memori sementara
+                            
+                    case "PUTAR_POSISI":
+                        # Putar sampai pas di target angle (Toleransi 2 derajat)
+                        if (robot.sensor.kompas >= gerak.target_angle - 2 and robot.sensor.kompas <= gerak.target_angle + 2):
+                            gerak.stop(robot)
+                            if (now - then > 0.1): # Delay stabil 0.5 detik
+                                STATE = TEMP_STATE # Lanjut ke aksi "NAIK" atau "TURUN"
+                        else:
+                            gerak.base_speed = 60
+                            gerak.hadap_sudut(robot)
+                            then = now
+                            
+                    case "NAIK":
+                        selesai = masukMainhua._proses_naik(robot, gerak)
+                        if selesai:
+                            print("[NAVIGASI] Naik Selesai.")
+                            hutan.step_selesai() # Update array jalur ke petak berikutnya
+                            STATE = "CEK_RUTE"   # Looping baca rute baru
+                            
+                    case "TURUN":
+                        selesai = masukMainhua._proses_turun(robot, gerak)
+                        if selesai:
+                            print("[NAVIGASI] Turun Selesai.")
+                            hutan.step_selesai() # Update array jalur ke petak berikutnya
+                            STATE = "CEK_RUTE"   # Looping baca rute baru
 
-                #     case "PENGECEKAN":
-                #         if (arena.jumlah_Turun == 3):
-                #             print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | ultrasonic_kiri : {robot.sensor.ultrasonic_kiri} | ultrasonic_kanan : {robot.sensor.ultrasonic_kanan} | ultrasonic_belakang : {robot.sensor.ultrasonic_belakang} ")
-                #             break
-                #         else :
-                #             if arena.jumlah_Turun == 0:
-                #                 gerak.target_angle = -180
-                #             if arena.jumlah_Turun == 1:
-                #                 gerak.target_angle = -90
-                #             if arena.jumlah_Turun == 2:
-                #                 gerak.target_angle = -180
-                #             then = time.time()                            
-                #             STATE =  "PROSESTURUN1"
+                    case "DATAR":
+                        print("[NAVIGASI] Rute Datar belum dibuat. Skip petak.")
+                        hutan.step_selesai()
+                        STATE = "CEK_RUTE"
 
-                #     case "PROSESTURUN1":
-                #         if (robot.sensor.kompas == gerak.target_angle or robot.sensor.kompas == -gerak.target_angle):
-                #             gerak.stop(robot)
-                #             if time.time() - then > 0.1:
-                #                 gerak.stop(robot)
-                #                 STATE =  "TURUN"
-                #         else:
-                #             gerak.hadap_sudut(robot)
-                #             then = time.time()
+                    # ==============================================================
+                    case "ZONA3":
+                        selesai = zona3.logic_zona3(robot, gerak)
+                        if selesai:
+                            break
+
+
                     
-                #     case "TURUN":
-                #         selesai = masukMainhua._proses_turun(robot, gerak)
-                #         if selesai:
-                #             arena.jumlah_Turun = arena.jumlah_Turun + 1
-                #             STATE =  "PENGECEKAN"
                             
                             
                 # selesai = zona3.logic_zona3(robot, gerak)
                             
 
 
-                selesai = ambil_kfs.jalankan_kombinasi_1(robot)
-                if selesai:
-                    break
+                
+
+                # selesai = ambil_kfs.jalankan_kombinasi_1(robot)
+                # if gerak.maju_ke_titik(robot, 350):
+                # if selesai:
+                    # break
 
                 # selesai = Capit.buka(robot)
                 # if selesai:
@@ -219,6 +249,10 @@ def main():
 
                 data_keluar = robot.motor.get_array_output()
                 writer.kirim_data(data_keluar) 
+                print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | kiri : {robot.sensor.ultrasonic_kiri} | kanan : {robot.sensor.ultrasonic_kanan} | blkng : {robot.sensor.ultrasonic_belakang} | K2: {robot.sensor.kompas2} | K3: {robot.sensor.kompas3} ")
+
+            # else:
+            #     break
 
             # 5. ISTIRAHAT CPU (Sangat penting agar terminal tidak freeze)
             time.sleep(0.01)

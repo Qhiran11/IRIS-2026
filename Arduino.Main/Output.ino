@@ -1,4 +1,4 @@
-// // arduino_10_motor_v4_non_blocking.ino (IRIS 2026 KRAI Standard)
+// // arduino_20_motor_v4_non_blocking.ino (IRIS 2026 KRAI Standard)
 // #include <Wire.h>
 // #include <Adafruit_PWMServoDriver.h>
 
@@ -28,8 +28,9 @@
 // int pcaChRight[5] = {6, 12, 11, 14, 2};
 // int pcaChLeft[5]  = {7, 13, 10, 15, 3};
 
-// int16_t targetSpeeds[13] = {0}; 
-// float currentSpeeds[13] = {0.0};
+// // UBAH: Ukuran array menjadi 20
+// int16_t targetSpeeds[20] = {0}; 
+// float currentSpeeds[20] = {0.0};
 // const float RAMP_TIME_MS = 200.0; 
 // const float MAX_SPEED_DELTA = 255.0; 
 // const float ACCEL_RATE = MAX_SPEED_DELTA / RAMP_TIME_MS; 
@@ -38,13 +39,20 @@
 // unsigned long lastSerialTime = 0;
 // unsigned long lastTelemetryTime = 0;
 
-// int limit1 = 46;
-// int limit2 = 45;
+// const int limit1 = 46;
+// const int limit2 = 45;
 
-// byte rxBuffer[30];
+// // UBAH: Perbesar ukuran rxBuffer minimal 45 (40 data byte + 1 checksum + 2 header + 2 end)
+// byte rxBuffer[50];
 // int rxIndex = 0;
 // enum SerialState { HEADER1, HEADER2, DATA, CHECKSUM, END1, END2 };
 // SerialState rxState = HEADER1;
+
+// // Variabel Stepper & Limit
+// long remainingSteps = 0;
+// bool readyToAccept = true; 
+// int arah_awal_0 = 0; // 1 (Kanan), -1 (Kiri), 0 (Berhenti)
+// int arah_awal_1 = 0; 
 
 // void setup() {
 //   Serial.begin(115200);
@@ -74,8 +82,8 @@
 //   processSerial();
 
 //   if (millis() - lastSerialTime > 300) {
-//     // lajuawal = 0;
-//     for (int i = 0; i < 13; i++) targetSpeeds[i] = 0;
+//     // UBAH: Loop reset batasnya menjadi 20
+//     for (int i = 0; i < 20; i++) targetSpeeds[i] = 0;
 //   }
 
 //   applyRamping();
@@ -87,29 +95,21 @@
 //      lastTelemetryTime = millis();
 //   }
 // }
-//   // --- Tambahkan/Ubah di bagian variabel global ---
-// // --- Tambahkan variabel global baru ---
-// long remainingSteps = 0;
-// bool readyToAccept = true; // Flag untuk mengunci spam data yang sama
 
 // void updateSteppersNonBlocking() {
 //   unsigned long currentMicros = micros();
-//   int incomingData = targetSpeeds[11]; // Data dari Python (misal 800)
+//   // Catatan: Pastikan indeks ke-11 tetap yang ingin digunakan, atau sesuaikan jika mapping Python berubah
+//   int incomingData = targetSpeeds[11]; /// stepper
 
-//   // --- LOGIKA FILTER SPAM ---
 //   if (incomingData != 0 && readyToAccept) {
-//     // 1. Terima data hanya saat flag ready (pertama kali data muncul)
 //     remainingSteps = incomingData; 
-//     readyToAccept = false; // KUNCI! Jangan terima data lagi sampai dikirim angka 0
+//     readyToAccept = false; 
 //   } 
 //   else if (incomingData == 0) {
-//     // 2. Jika Python kirim 0, buka kembali kuncinya
 //     readyToAccept = true;
 //   }
 
-//   // --- LOGIKA GERAK STEPPER ---
 //   if (remainingSteps != 0) {
-//     // Tentukan Arah
 //     if (remainingSteps > 0) {
 //       digitalWrite(STP1_DIR, LOW);
 //       digitalWrite(STP2_DIR, HIGH);
@@ -118,15 +118,13 @@
 //       digitalWrite(STP2_DIR, LOW);
 //     }
 
-//     // Interval Pulse
 //     if (currentMicros - lastStepMicros1 >= stepInterval) {
 //       lastStepMicros1 = currentMicros;
 //       pullState1 = !pullState1;
       
 //       digitalWrite(STP1_PULL, pullState1);
-//       digitalWrite(STP2_PULL, pullState1); // STP2 mengikuti STP1 agar sinkron
+//       digitalWrite(STP2_PULL, pullState1); 
 
-//       // Kurangi sisa step setiap satu siklus HIGH-LOW selesai
 //       if (pullState1 == LOW) {
 //         if (remainingSteps > 0) remainingSteps--;
 //         else remainingSteps++;
@@ -141,15 +139,21 @@
 //     switch (rxState) {
 //       case HEADER1: if (b == 0xAA) rxState = HEADER2; break;
 //       case HEADER2: if (b == 0x55) rxState = DATA; rxIndex = 0; break;
-//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= 26) rxState = CHECKSUM; break;
-//       case CHECKSUM: rxBuffer[26] = b; rxState = END1; break;
+      
+//       // UBAH: 20 data * 2 byte = 40 byte. Checksum ada di indeks ke-40
+//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= 40) rxState = CHECKSUM; break;
+//       case CHECKSUM: rxBuffer[40] = b; rxState = END1; break;
+      
 //       case END1: if (b == 0x0D) rxState = END2; else rxState = HEADER1; break;
 //       case END2:
 //         if (b == 0x0A) {
 //           byte calcXor = 0;
-//           for (int i = 0; i < 26; i++) calcXor ^= rxBuffer[i];
-//           if (calcXor == rxBuffer[26]) {
-//              for(int i = 0; i < 13; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
+//           // UBAH: Loop kalkulasi XOR sampai byte ke-40
+//           for (int i = 0; i < 40; i++) calcXor ^= rxBuffer[i];
+          
+//           if (calcXor == rxBuffer[40]) {
+//              // UBAH: Konversi array memproses 20 data
+//              for(int i = 0; i < 20; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
 //              lastSerialTime = millis();
 //           }
 //         }
@@ -163,7 +167,8 @@
 //   unsigned long dt = now - lastRampTime;
 //   if (dt > 0) {
 //      float maxChange = ACCEL_RATE * dt; 
-//      for(int i = 0; i < 13; i++) {
+//      // UBAH: Ramping diterapkan ke 20 array kecepatan
+//      for(int i = 0; i < 20; i++) {
 //          float diff = targetSpeeds[i] - currentSpeeds[i];
 //          if (abs(diff) <= maxChange) currentSpeeds[i] = targetSpeeds[i]; 
 //          else if (diff > 0) currentSpeeds[i] += maxChange; 
@@ -190,52 +195,56 @@
 //   }
 // }
 
-// // Tambahkan 2 variabel global ini di bagian atas (luar fungsi) untuk menyimpan arah yang dikunci
-
-
-// // Tambahkan 2 variabel global ini di bagian atas
-// int arah_awal_0 = 0; // 1 (Kanan), -1 (Kiri), 0 (Berhenti)
-// int arah_awal_1 = 0; 
-
 // void setL298(int index, int pwm) {
-//   // === KHUSUS MOTOR 0 ===
 //   if (index == 0) {
-//     if (digitalRead(limit1) == 0) { // JIKA MENTOK
-//       // Berhenti jika arah perintah SAMA dengan arah mentok, atau jika disuruh stop
-//       if ((pwm > 0 && arah_awal_0 > 0) || (pwm < 0 && arah_awal_0 < 0) || pwm == 0) {
-//         analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
-//       } 
-//       else { // Beda arah, izinkan lolos
-//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
+//     if (targetSpeeds[12] == 1) {
+//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
+//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
+//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); }
+//     }   
+    
+//     else{
+//       if (digitalRead(limit1) == 0) { 
+//         if ((pwm > 0 && arah_awal_0 > 0) || (pwm < 0 && arah_awal_0 < 0) || pwm == 0) {
+//           analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
+//         } 
+//         else { 
+//           if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
+//           else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
+//         }
 //       }
-//     }
-//     else { // JIKA TIDAK MENTOK (Simpan Arah Terakhir)
-//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 1; }
-//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_0 = -1; }
-//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 0; }
+//       else { 
+//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 1; }
+//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_0 = -1; }
+//         else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 0; }
+//       }
 //     }
 //   }
 
-//   // === KHUSUS MOTOR 1 ===
-//   else if (index == 1) { // <-- HARUS ELSE IF
-//     if (digitalRead(limit2) == 0) {
-//       if ((pwm > 0 && arah_awal_1 > 0) || (pwm < 0 && arah_awal_1 < 0) || pwm == 0) {
-//         analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
-//       } 
-//       else {
-//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//       }
+//   else if (index == 1) {
+//     if (targetSpeeds[12] == 1) {
+//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
+//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
+//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); }
 //     }
-//     else {
-//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 1; }
-//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_1 = -1; }
-//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 0; }
+//     else{
+//       if (digitalRead(limit2) == 0) {
+//         if ((pwm > 0 && arah_awal_1 > 0) || (pwm < 0 && arah_awal_1 < 0) || pwm == 0) {
+//           analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
+//         } 
+//         else {
+//           if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
+//           else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
+//         }
+//       }
+//       else {
+//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 1; }
+//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_1 = -1; }
+//         else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 0; }
+//       }
 //     }
 //   }
     
-//   // === UNTUK MOTOR LAINNYA (Index 2-5) BEBAS ===
 //   else {
 //     if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
 //     else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
@@ -244,6 +253,6 @@
 // }
 
 // void sendTelemetry() {
-//    byte pkt[7] = {0xBB, 0x66, 0x0D, 0x04, 0x00, 0x0D, 0x0A}; // Dummy 1245
+//    byte pkt[7] = {0xBB, 0x66, 0x0D, 0x04, 0x00, 0x0D, 0x0A}; 
 //    Serial.write(pkt, 7);
 // }

@@ -20,10 +20,22 @@ class Zona3:
         now = time.time()
         match self.state:
             case "READY":
+                gerak.target_angle = 0
                 gerak.base_speed  = 80
                 gerak.max_pwm = gerak.base_speed
                 self.then = now
-                self.state = "KANAN"
+                self.state = "STABLE"
+
+            case "STABLE":
+                if (robot.sensor.kompas > gerak.target_angle -1 and robot.sensor.kompas < gerak.target_angle +1):
+                    gerak.stop(robot)
+                    
+                    if time.time() - self.then > 0.1:
+                        gerak.stop(robot)
+                        self.state = "STABLE"
+                else:
+                    gerak.hadap_sudut(robot)
+                    self.then = time.time()
 
             case "KANAN":
                 if gerak.geser_ke_tengah2(robot, self.jarak_naik_kanan):

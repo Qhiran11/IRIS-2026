@@ -13,6 +13,12 @@ class SensorData:
         self.proxi_belakang = 0
         self.proxi_depan = 1
 
+        self.tombak_terdeteksi = False
+        self.tombak_x = 0
+        self.tombak_y = 0
+        self.koreksi_pid_tombak = 0
+        
+
         # sensor ultrasonic
         self.ultrasonic_kiri = 0
         self.ultrasonic_kanan = 0
@@ -33,7 +39,14 @@ class SensorData:
         
         # Data Cadangan
         self.kompas2 = 0
+
         self.kompas3 = 0
+
+        self.kfs_terdeteksi = 0
+
+        self.sensor_kfs_depan = 0
+        self.sensor_garis_1 = 0
+        self.sensor_garis_2 = 0
 
         self.posisi_di_hutan = 0
 
@@ -79,7 +92,13 @@ class SensorData:
             self.proxi_depan      = arr[10]
             
             self.kompas2      = arr[11]
+            
             self.kompas3      = arr[12]
+            self.kfs_terdeteksi = arr[13]
+
+            self.sensor_kfs_depan = arr[14]
+            self.sensor_garis_1 = arr[15]
+            self.sensor_garis_2 = arr[16]
 
 
 
@@ -137,4 +156,5 @@ class Robot:
         """Objek Utama yang menyatukan Sensor dan Motor"""
         self.sensor = SensorData()
         self.motor = MotorCommand()
+        self.jumlah_kfs = 0
         self.zona_aktif = 1  # State awal robot

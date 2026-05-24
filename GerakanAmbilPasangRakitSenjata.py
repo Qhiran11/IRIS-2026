@@ -31,7 +31,7 @@ class RakitSenjata:
                 gerak.hadap_sudut(robot)
                 
                 # 4. BACA kompas dari objek 'robot' yang datanya selalu FRESH
-                if (robot.sensor.kompas >= (target_angle - 1) and robot.sensor.kompas <= (target_angle + 1)):
+                if (robot.sensor.kompas >= (target_angle - 2) and robot.sensor.kompas <= (target_angle + 2)):
                     if (now - self.start_time > 0.1): # Delay kecil untuk memastikan stabil
                         print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
                         self.state = "MENDEKAT"
