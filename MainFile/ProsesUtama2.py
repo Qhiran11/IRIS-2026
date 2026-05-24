@@ -30,7 +30,7 @@ def main():
     robot = Robot()
     
     sensor = SensorReader(port='/dev/ttyACM0', baudrate=115200) 
-    writer = ArduinoDueWriter(port='COM6', baudrate=115200)
+    writer = ArduinoDueWriter(port='/dev/ttyACM1', baudrate=115200)
 
     arena = MappingArena()
     hutan = MappingHutan()
