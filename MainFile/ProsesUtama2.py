@@ -51,7 +51,7 @@ def main():
 
     # kamera = KameraSensor(robot.sensor, tampilkan_video=False)
     kamera = DeteksiQR(robot)
-    kamera.start()
+    # kamera.start()
 
     prosesAmbilKfs = False
 
