@@ -6,7 +6,7 @@ class MatrixKeypad:
         # 1. Tentukan Pin (Gunakan penomoran BOARD/Fisik pada Jetson Nano)
         # Pastikan pin ini aman dan tidak dipakai oleh I2C/SPI tanpa sengaja
         self.ROW_PINS = [31, 13, 11, 7]    # 4 Pin untuk Baris (R1, R2, R3, R4)
-        self.COL_PINS = [33, 35, 37]
+        self.COL_PINS = [37, 35, 35]
 
         # 2. Pemetaan Layout Tombol 
         # Sesuaikan dengan bentuk fisik D-Pad / Keypad Anda
