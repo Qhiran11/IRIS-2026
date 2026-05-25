@@ -15,6 +15,7 @@ from GerakanNaikTurun import GerakanNaikTurun
 from MappingArena import MappingArena
 from Zona3 import Zona3
 from MappingHutan import MappingHutan
+from TelemetriJetson import TelemetryServer
 
 
 from GerakanDasar import GerakanDasar
@@ -28,6 +29,11 @@ def main():
     # ... (print logo Anda) ...
 
     robot = Robot()
+
+    # --- INISIALISASI TELEMETRI ---
+    telemetri = TelemetryServer()
+    telemetri.start()
+    # ------------------------------
     
     sensor = SensorReader(port='/dev/ttyACM0', baudrate=115200) 
     writer = ArduinoDueWriter(port='/dev/ttyACM1', baudrate=115200)
@@ -73,6 +79,10 @@ def main():
         while True:
             # 1. BACA SENSOR DARI ARDUINO MEGA
             array_input = sensor.baca_data()
+
+            # --- KIRIM DATA KE KOMPUTER MONITOR ---
+            telemetri.kirim_data(robot)
+            # --------------------------------------
             now = time.time()
             
 
