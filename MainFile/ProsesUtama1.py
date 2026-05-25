@@ -71,6 +71,7 @@ def main():
             # 1. BACA SENSOR DARI ARDUINO MEGA
             array_input = sensor.baca_data()
             now = time.time()
+            robot.sensor.MAIN_STATE = STATE # Update memori state utama untuk dashboard
             
 
             

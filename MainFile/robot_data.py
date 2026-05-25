@@ -2,6 +2,9 @@ class SensorData:
     def __init__(self):
         self.posisi_x = 0.0
         self.posisi_y = 0.0
+
+
+        self.MAIN_STATE = "IDLE"
         
         # --- DATA SENSOR (30% Bilangan Bulat / Int) ---
         self.switch = 0

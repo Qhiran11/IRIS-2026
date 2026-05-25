@@ -270,7 +270,7 @@ def main():
 
                 data_keluar = robot.motor.get_array_output()
                 writer.kirim_data(data_keluar) 
-                print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | kiri : {robot.sensor.ultrasonic_kiri} | kanan : {robot.sensor.ultrasonic_kanan} | blkng : {robot.sensor.ultrasonic_belakang} | K2: {robot.sensor.kompas2} | K3: {robot.sensor.kompas3} ")
+                # print(f"K: {robot.sensor.kompas} | D: {robot.sensor.jarak_depan}  | kiri : {robot.sensor.ultrasonic_kiri} | kanan : {robot.sensor.ultrasonic_kanan} | blkng : {robot.sensor.ultrasonic_belakang} | K2: {robot.sensor.kompas2} | K3: {robot.sensor.kompas3} ")
 
             # else:
             #     break
