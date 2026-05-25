@@ -5,8 +5,8 @@ class MatrixKeypad:
     def __init__(self):
         # 1. Tentukan Pin (Gunakan penomoran BOARD/Fisik pada Jetson Nano)
         # Pastikan pin ini aman dan tidak dipakai oleh I2C/SPI tanpa sengaja
-        self.ROW_PINS = [11, 0, 5, 6]    # 4 Pin untuk Baris (R1, R2, R3, R4)
-        self.COL_PINS = [13, 19, 26]
+        self.ROW_PINS = [23, 27, 29, 37]    # 4 Pin untuk Baris (R1, R2, R3, R4)
+        self.COL_PINS = [31, 33, 35]
 
         # 2. Pemetaan Layout Tombol 
         # Sesuaikan dengan bentuk fisik D-Pad / Keypad Anda
@@ -18,8 +18,8 @@ class MatrixKeypad:
         ]
 
         # 3. Setup GPIO
-        # GPIO.setmode(GPIO.BOARD)
-        GPIO.setmode(GPIO.BCM)
+        GPIO.setmode(GPIO.BOARD)
+        # GPIO.setmode(GPIO.BCM)
         
         # Setup Kolom sebagai Input dengan Pull-Up Internal (Default HIGH)
         for col in self.COL_PINS:
