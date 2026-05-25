@@ -5,8 +5,8 @@ class MatrixKeypad:
     def __init__(self):
         # 1. Tentukan Pin (Gunakan penomoran BOARD/Fisik pada Jetson Nano)
         # Pastikan pin ini aman dan tidak dipakai oleh I2C/SPI tanpa sengaja
-        self.ROW_PINS = [15, 19, 21, 37]    # 4 Pin untuk Baris (R1, R2, R3, R4)
-        self.COL_PINS = [31, 33, 35]
+        self.ROW_PINS = [31, 21, 19, 17]    # 4 Pin untuk Baris (R1, R2, R3, R4)
+        self.COL_PINS = [33, 35, 37]
 
         # 2. Pemetaan Layout Tombol 
         # Sesuaikan dengan bentuk fisik D-Pad / Keypad Anda
