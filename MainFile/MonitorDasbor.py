@@ -34,22 +34,34 @@ def cari_jetson(token_target):
             console.print("[bold red]✖ Timeout! Jetson Nano tidak ditemukan. Pastikan Token benar dan jaringan sama.[/bold red]")
             udp_sock.close()
             return None, None
-
 def buat_tabel(judul, dictionary_data):
     """Fungsi ajaib untuk membuat tabel dari data JSON apa pun secara dinamis"""
-    table = Table(title=judul, style="cyan", title_style="bold magenta", expand=True)
-    table.add_column("Parameter", style="cyan", no_wrap=True)
-    table.add_column("Nilai / Value", style="bold white")
+    
+    # Tambahkan parameter row_styles di sini
+    # Gunakan "grey50" (abu-abu) dan "blue" (biru)
+    table = Table(
+        title=judul, 
+        style="cyan", 
+        title_style="bold magenta", 
+        expand=True,
+        row_styles=["grey50", "blue"] 
+    )
+    
+    # Karena row_styles mengatur warna baris, kita bisa menghapus style statis pada kolom 
+    # agar warna selang-selingnya tidak tertimpa, atau biarkan jika ingin kolom tertentu tetap warnanya.
+    table.add_column("Parameter", no_wrap=True)
+    table.add_column("Nilai / Value", style="bold")
     
     for key, value in dictionary_data.items():
-        # Beri warna merah muda jika nilai boolean False, hijau jika True
+        # Beri warna hijau jika True, merah jika False
         str_val = str(value)
         if isinstance(value, bool):
+            # Markup warna ini akan menimpa/override warna abu/biru bawaan row_styles (khusus untuk teks boolean ini)
             str_val = f"[green]{value}[/green]" if value else f"[red]{value}[/red]"
+            
         table.add_row(str(key), str_val)
         
     return table
-
 def generate_dashboard():
     """Fungsi untuk merender struktur UI Dasbor"""
     if not data_robot_terkini:
