@@ -110,48 +110,42 @@ class SensorData:
 
 class MotorCommand:
     def __init__(self):
-        # Output untuk 6 Motor (PW: Relay, DC: PWM)
-        self.relay_pw_kanan = 0  # data 0
-        self.relay_pw_kiri = 0   # data 1
-        self.m3_pwm = 0  # data 2
-        self.m4_pwm = 0  # data 3
-        self.m5_pwm = 0  # data 4
-        self.m6_pwm = 0  # data 5
+        # 6 Motor Driver
+        self.m1_pwm = 0      # data 0
+        self.m2_pwm = 0      # data 1
+        self.m3_pwm = 0      # data 2
+        self.m4_pwm = 0      # data 3
+        self.m5_pwm = 0      # data 4
+        self.m6_pwm = 0      # data 5
 
-        self.mDorong1 = 0  # data 6
-        self.mDorong2 = 0  # data 7
-        
-        # Kontrol Relay / Gripper
-        self.capit_putar_kiri = 0  # data 8
-        self.capit_putar_kanan = 0 # data 9
-        self.capit_jepit = 0 # data 10
-        
-        # Kontrol Stepper
-        self.stepper1 = 0 # data 11
-        self.pwLogic = 0 # data 12
+        # 2 Motor Relay (data mDorong1 & mDorong2 pindah ke PW relay)
+        self.mDorong1 = 0    # data 6
+        self.mDorong2 = 0    # data 7
+
+        self.pwLogic = 0     # data 8
 
         # Relay tambahan (pin 40 & pin 42)
-        self.relay_tambahan1 = 0 # data 13
-        self.relay_tambahan2 = 0 # data 14
-        self.cadangan3 = 0 # data 15
-        self.cadangan4 = 0 # data 16
-        self.cadangan5 = 0 # data 17
-        self.cadangan6 = 0 # data 18
-        self.cadangan7 = 0 # data 19
+        self.relay_tambahan1 = 0 # data 9
+        self.relay_tambahan2 = 0 # data 10
+
+        # Deprecated / Dummy variables to maintain backward compatibility with other scripts
+        self.relay_pw_kanan = 0
+        self.relay_pw_kiri = 0
+        self.capit_putar_kiri = 0
+        self.capit_putar_kanan = 0
+        self.capit_jepit = 0
+        self.stepper1 = 0
 
     def get_array_output(self):
         """
-        Mengemas variabel menjadi array[20] untuk dikirim ke Arduino Due.
+        Mengemas variabel menjadi array[11] untuk dikirim ke Arduino Due.
         """
         arr = [
-            self.relay_pw_kanan, self.relay_pw_kiri, self.m3_pwm, 
+            self.m1_pwm, self.m2_pwm, self.m3_pwm, 
             self.m4_pwm, self.m5_pwm, self.m6_pwm,
             self.mDorong1, self.mDorong2,
-            self.capit_putar_kiri, self.capit_putar_kanan,
-            self.capit_jepit, 
-            self.stepper1, self.pwLogic,
-            self.relay_tambahan1, self.relay_tambahan2, self.cadangan3, 
-            self.cadangan4, self.cadangan5, self.cadangan6, self.cadangan7
+            self.pwLogic,
+            self.relay_tambahan1, self.relay_tambahan2
         ]
         
         return arr

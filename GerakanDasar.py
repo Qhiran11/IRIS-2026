@@ -51,7 +51,7 @@ class GerakanDasar:
     def stop(self, robot):
         self._apply_motor(robot, 0, 0, 0, 0)
         
-        robot.motor.relay_pw_kanan = robot.motor.relay_pw_kiri = robot.motor.mDorong1 = robot.motor.mDorong2 = 0
+        robot.motor.mDorong1 = robot.motor.mDorong2 = 0
         
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
@@ -188,14 +188,14 @@ class GerakanDasar:
         Menggunakan relay: speed < 0 berarti naik, speed > 0 turun, speed == 0 mati.
         """
         if speed < 0:
-            robot.motor.relay_pw_kanan = -1
-            robot.motor.relay_pw_kiri = -1
+            robot.motor.mDorong1 = -1
+            robot.motor.mDorong2 = -1
         elif speed > 0:
-            robot.motor.relay_pw_kanan = 1
-            robot.motor.relay_pw_kiri = 1
+            robot.motor.mDorong1 = 1
+            robot.motor.mDorong2 = 1
         else:
-            robot.motor.relay_pw_kanan = 0
-            robot.motor.relay_pw_kiri = 0
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
         
     def turun(self, robot, speed):
         """
@@ -203,14 +203,14 @@ class GerakanDasar:
         Menggunakan relay: speed < 0 berarti naik, speed > 0 turun, speed == 0 mati.
         """
         if speed < 0:
-            robot.motor.relay_pw_kanan = -1
-            robot.motor.relay_pw_kiri = -1
+            robot.motor.mDorong1 = -1
+            robot.motor.mDorong2 = -1
         elif speed > 0:
-            robot.motor.relay_pw_kanan = 1
-            robot.motor.relay_pw_kiri = 1
+            robot.motor.mDorong1 = 1
+            robot.motor.mDorong2 = 1
         else:
-            robot.motor.relay_pw_kanan = 0
-            robot.motor.relay_pw_kiri = 0
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
 
 
     def maju_roda_2(self, robot):

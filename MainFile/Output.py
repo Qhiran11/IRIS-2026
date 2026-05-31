@@ -39,21 +39,21 @@ class ArduinoDueWriter:
             if array_output != self.temp_speeds or (current_time - self.last_sent_time > 0.01):
                 self.temp_speeds = array_output.copy()
                 
-                # 1. Konversi 20 angka (int16) menjadi 40 byte (Little Endian '<20h')
-                # Pastikan array_output yang dikirim dari script utama memiliki 20 elemen
-                data_40b = struct.pack('<20h', *array_output)
+                # 1. Konversi 11 angka (int16) menjadi 22 byte (Little Endian '<11h')
+                # Pastikan array_output yang dikirim dari script utama memiliki 11 elemen
+                data_22b = struct.pack('<11h', *array_output)
                 
                 # 2. Hitung Checksum (CRC) menggunakan XOR
                 calc_crc = 0
-                for b in data_40b:
+                for b in data_22b:
                     calc_crc ^= b
                     
                 # 3. Rakit Paket Lengkap
                 # - Header: 0xAA, 0x55
-                # - Data: 40 byte
+                # - Data: 22 byte
                 # - CRC: 1 byte hasil hitung
                 # - Footer: 0x0D, 0x0A (\r\n)
-                payload = struct.pack('<BB', 0xAA, 0x55) + data_40b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
+                payload = struct.pack('<BB', 0xAA, 0x55) + data_22b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
                 
                 # 4. Tembakkan ke Serial
                 self.ser.write(payload)

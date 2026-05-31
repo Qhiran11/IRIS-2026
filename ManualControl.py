@@ -22,15 +22,14 @@ class MotorControllerApp(ctk.CTk):
         
         # State Data
         self.motor_names = [
-            "M0 (Relay PW kanan)", "M1 (Relay PW kiri)", 
+            "M0 (Driver Kanan)", "M1 (Driver Kiri)", 
             "M2 (DC Kanan Depan)", "M3 (DC Kiri Depan)", "M4 (DC Kanan Bkng)", "M5 (DC Kiri Bkng)",
-            "M6 (PCA DC Kiri)", "M7 (PCA DC Kanan)",
-            "M8 (PCA 3)", "M9 (PCA 4)", "M10 (PCA 5)",
-            "M11 (Stepper 1)", "M12 (Stepper 2)",
-            "M13 (Relay Tambahan 1)", "M14 (Relay Tambahan 2)"
+            "M6 (Relay PW Kanan / mDorong1)", "M7 (Relay PW Kiri / mDorong2)",
+            "M8 (pwLogic)",
+            "M9 (Relay Tambahan 1)", "M10 (Relay Tambahan 2)"
         ]
-        self.motor_limits = [255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1000, 1000, 1, 1]
-        self.motor_speeds = [0] * 20
+        self.motor_limits = [255, 255, 255, 255, 255, 255, 255, 255, 1, 1, 1]
+        self.motor_speeds = [0] * 11
         self.entry_vars = []
         
         # Perlindungan Variabel Antar-Thread (Protects motor_speeds array)
@@ -134,10 +133,10 @@ class MotorControllerApp(ctk.CTk):
             lbl.pack(side="left")
             
             btn_dec = ctk.CTkButton(row, text="<", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [11, 12]:
+            if i in [6, 7]:
                 btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, -1))
                 btn_dec.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
-            elif i in [13, 14]:
+            elif i in [8, 9, 10]:
                 btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_dec.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
@@ -151,10 +150,10 @@ class MotorControllerApp(ctk.CTk):
             self.entry_vars.append(var)
             
             btn_inc = ctk.CTkButton(row, text=">", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [11, 12]:
+            if i in [6, 7]:
                 btn_inc.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_inc.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
-            elif i in [13, 14]:
+            elif i in [8, 9, 10]:
                 btn_inc.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_inc.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
@@ -231,49 +230,8 @@ class MotorControllerApp(ctk.CTk):
         btn_turn_r.bind("<ButtonPress-1>", lambda e: self.set_vector(True, vx=0, vy=0, w=1))
         btn_turn_r.bind("<ButtonRelease-1>", lambda e: self.set_vector(False, vx=0, vy=0, w=0))
 
-        # D. TRIANGLE ARROWS (PCA M6 & M7)
-        pca_frame = ctk.CTkFrame(self.right_frame, fg_color="transparent")
-        pca_frame.pack(pady=10)
-        
-        btn_pca_up = ctk.CTkButton(pca_frame, text="▲", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca_up.grid(row=0, column=0, padx=20)
-        btn_pca_up.bind("<ButtonPress-1>", lambda e: self.cmd_pca(True, 1))
-        btn_pca_up.bind("<ButtonRelease-1>", lambda e: self.cmd_pca(False, 0))
-        
-        btn_pca_dn = ctk.CTkButton(pca_frame, text="▼", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca_dn.grid(row=0, column=1, padx=10)
-        btn_pca_dn.bind("<ButtonPress-1>", lambda e: self.cmd_pca(True, -1))
-        btn_pca_dn.bind("<ButtonRelease-1>", lambda e: self.cmd_pca(False, 0))
-
-        btn_pca_in = ctk.CTkButton(pca_frame, text="><", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca_in.grid(row=0, column=2, padx=10)
-        btn_pca_in.bind("<ButtonPress-1>", lambda e: self.cmd_pca_2(True, 1))
-        btn_pca_in.bind("<ButtonRelease-1>", lambda e: self.cmd_pca_2(False, 0))
-
-        btn_pca_out = ctk.CTkButton(pca_frame, text="<>", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca_out.grid(row=0, column=3, padx=10)
-        btn_pca_out.bind("<ButtonPress-1>", lambda e: self.cmd_pca_2(True, -1))
-        btn_pca_out.bind("<ButtonRelease-1>", lambda e: self.cmd_pca_2(False, 0))
-
-        btn_pca5_1 = ctk.CTkButton(pca_frame, text="⟲", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca5_1.grid(row=1, column=0, padx=10, pady=5)
-        btn_pca5_1.bind("<ButtonPress-1>", lambda e: self.cmd_pca_3(True, 1))
-        btn_pca5_1.bind("<ButtonRelease-1>", lambda e: self.cmd_pca_3(False, 0))
-
-        btn_pca5_2 = ctk.CTkButton(pca_frame, text="⟳", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_pca5_2.grid(row=1, column=1, padx=10, pady=5)
-        btn_pca5_2.bind("<ButtonPress-1>", lambda e: self.cmd_pca_3(True, -1))
-        btn_pca5_2.bind("<ButtonRelease-1>", lambda e: self.cmd_pca_3(False, 0))
-        
-        btn_stp_up = ctk.CTkButton(pca_frame, text="↧", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_stp_up.grid(row=1, column=2, padx=10, pady=5)
-        btn_stp_up.bind("<ButtonPress-1>", lambda e: self.cmd_stepper(True, 1))
-        btn_stp_up.bind("<ButtonRelease-1>", lambda e: self.cmd_stepper(False, 0))
-        
-        btn_stp_dn = ctk.CTkButton(pca_frame, text="↥", width=80, height=70, fg_color=RED_BTN, hover_color=RED_HOV, font=font_icn)
-        btn_stp_dn.grid(row=1, column=3, padx=10, pady=5)
-        btn_stp_dn.bind("<ButtonPress-1>", lambda e: self.cmd_stepper(True, -1))
-        btn_stp_dn.bind("<ButtonRelease-1>", lambda e: self.cmd_stepper(False, 0))
+        # PCA dan Stepper dinonaktifkan (Komponen telah dilepas)
+        pass
 
 
     # ===============================================
@@ -353,32 +311,10 @@ class MotorControllerApp(ctk.CTk):
         self.update_entry_text()
 
     def cmd_pw(self, pressed, dir_val):
-        a = dir_val
-        if a == 1: a = 255 - 135
-        else: a = 255
-        s = a * dir_val # Fix 100 sesuai request
-        self.set_motor_val(0, s if pressed else 0)
-        self.set_motor_val(1, s if pressed else 0)
-
-    def cmd_pca(self, pressed, dir_val):
-        s = self.get_global_max() * dir_val
+        # PW sekarang menggunakan relay dikontrol oleh mDorong1 dan mDorong2 (indeks 6 dan 7)
+        s = dir_val
         self.set_motor_val(6, s if pressed else 0)
-        self.set_motor_val(7, -1*s if pressed else 0) # Flip jika motor PCA satunya terbalik arah
-
-    def cmd_pca_2(self, pressed, dir_val):
-        s = self.get_global_max() * dir_val
-        self.set_motor_val(8, s if pressed else 0)
-        self.set_motor_val(9, -1*s if pressed else 0)
-
-    def cmd_pca_3(self, pressed, dir_val):
-        s = self.get_global_max() * dir_val
-        self.set_motor_val(10, s if pressed else 0)
-
-    def cmd_stepper(self, pressed, dir_val):
-        # Stepper kecepatan konstan on/off
-        sp = 800 * dir_val
-        self.set_motor_val(11, -sp if pressed else 0)
-        self.set_motor_val(12, sp if pressed else 0)
+        self.set_motor_val(7, s if pressed else 0)
 
     # ===============================================
     # SERIAL TX (TRANSMITTER) - THREAD
@@ -396,22 +332,22 @@ class MotorControllerApp(ctk.CTk):
             if self.ser and self.ser.is_open:
                 try:
                     with self.data_lock:
-                        self.motor_speeds[12] = 0
+                        self.motor_speeds[8] = 0 # pwLogic (indeks 8)
                         speeds_snapshot = self.motor_speeds.copy()
                         
                     # Kirim ke Robot JIKA nilai motor dirubah ATAU jika sudah lewat 0.05s (Keep Alive)
                     if self.temp_speeds != speeds_snapshot or (current_time - self.last_sent_time > 0.05):
                         self.temp_speeds = speeds_snapshot
                         
-                        # UBAH: Konversi 20 angka (int16) menjadi 40 byte (Little Endian '<20h')
-                        data_40b = struct.pack('<20h', *speeds_snapshot)
+                        # UBAH: Konversi 11 angka (int16) menjadi 22 byte (Little Endian '<11h')
+                        data_22b = struct.pack('<11h', *speeds_snapshot)
                         
                         calc_crc = 0
-                        for b in data_40b:
+                        for b in data_22b:
                             calc_crc ^= b
                             
-                        # Rakit payload: Header (2) + Data (40) + Checksum (1) + End (2)
-                        payload = struct.pack('<BB', 0xAA, 0x55) + data_40b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
+                        # Rakit payload: Header (2) + Data (22) + Checksum (1) + End (2)
+                        payload = struct.pack('<BB', 0xAA, 0x55) + data_22b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
                         self.ser.write(payload)
                         self.last_sent_time = current_time
                         
@@ -549,13 +485,13 @@ class MotorControllerApp(ctk.CTk):
         time.sleep(0.1)
         if self.ser and self.ser.is_open:
             # Kirim sinyal Ngerem Semua satu kali terakhir ke Arduino sebelum mati
-            # UBAH: Kirim array berisi 20 angka nol, di-pack dengan format '<20h'
-            data_40b = struct.pack('<20h', *([0]*20))
+            # UBAH: Kirim array berisi 11 angka nol, di-pack dengan format '<11h'
+            data_22b = struct.pack('<11h', *([0]*11))
             crc = 0
-            for b in data_40b: 
+            for b in data_22b: 
                 crc ^= b
                 
-            payload = struct.pack('<BB', 0xAA, 0x55) + data_40b + struct.pack('<BBB', crc, 0x0D, 0x0A)
+            payload = struct.pack('<BB', 0xAA, 0x55) + data_22b + struct.pack('<BBB', crc, 0x0D, 0x0A)
             try: 
                 self.ser.write(payload)
             except: 
