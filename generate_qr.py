@@ -5,7 +5,7 @@ import os
 print("=== GENERATOR QR CODE TIM NANOPA 2026 ===")
 
 # 1. Meminta input kalimat dari Anda saat program dijalankan
-data_qr = "Masukkan kalimat atau instruksi untuk QR Code:"
+data_qr = "https://res.cloudinary.com/drbivi2n4/image/upload/v1780206749/7a75927b-dab7-4057-9c01-7c4eca87824b.png"
 
 # 2. Membuat logika QR Code
 qr = qrcode.QRCode(
