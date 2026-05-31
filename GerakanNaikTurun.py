@@ -4,21 +4,7 @@ from MappingHutan import MappingHutan
 
 class GerakanNaikTurun:
     def __init__(self):
-        self.state = "IDLE"
-        self.sub_state = "SIAP" # Untuk mengatur langkah di dalam fungsi tertentu
-        self.sub_state1 = "PERISAPAN"
-        self.sub_state2 = "PERISAPAN"
-        self.start_time = 0
-        self.is_done = False
-        self.then = time.time()
-        self.jumlahNaik = 0
         self.Hutan = MappingHutan()
-
-    def reset(self):
-        self.state = "IDLE"
-        self.sub_state = "SERONG"
-
-        self.is_done = False
 
     # ==============================================================
     # FUNGSI 1: GERAK KE TENGAH DAN MAJU
@@ -27,31 +13,31 @@ class GerakanNaikTurun:
 
         now = time.time()
         
-        if self.sub_state == "SIAP":
+        if robot.state.naikturun_sub_state == "SIAP":
             gerak.base_speed = gerak.max_pwm = 140
             gerak.maju_diagonal_kanan(robot)
-            self.start_time = now
-            self.sub_state = "SERONG"
+            robot.state.naikturun_start_time = now
+            robot.state.naikturun_sub_state = "SERONG"
             
-        elif self.sub_state == "SERONG":
+        elif robot.state.naikturun_sub_state == "SERONG":
             gerak.base_speed = gerak.max_pwm = 140
             gerak.maju_diagonal_kanan(robot)
-            if (now - self.start_time > 1.5):                    
+            if (now - robot.state.naikturun_start_time > 1.5):                    
                 if (robot.sensor.jarak_depan > 0 and robot.sensor.jarak_depan < 500):
                     gerak.stop(robot)
-                    self.sub_state = "SAMPING"
-                    self.start_time = now
+                    robot.state.naikturun_sub_state = "SAMPING"
+                    robot.state.naikturun_start_time = now
             
-        elif self.sub_state == "SAMPING":
+        elif robot.state.naikturun_sub_state == "SAMPING":
             # Panggil fungsi maju ke jarak 2cm
             gerak.kanan(robot)
             
             # Cek apakah sudah dekat tembok depan
-            if now - self.start_time > 0.6: 
-                self.sub_state = "PASKAN"
-                self.start_time = now
+            if now - robot.state.naikturun_start_time > 0.6: 
+                robot.state.naikturun_sub_state = "PASKAN"
+                robot.state.naikturun_start_time = now
             
-        elif self.sub_state == "PASKAN":
+        elif robot.state.naikturun_sub_state == "PASKAN":
             gerak.base_speed = gerak.max_pwm = 50
             if gerak.geser_ke_tengah2(robot, 255): 
                 print("[NAIK-TURUN] Posisi Pas. Siap Naik.")
@@ -67,16 +53,16 @@ class GerakanNaikTurun:
     def _proses_naik(self, robot, gerak):
         now = time.time()
         
-        if self.sub_state1 == "PERISAPAN":
+        if robot.state.naikturun_sub_state1 == "PERISAPAN":
             gerak.base_speed  = 30
             gerak.max_pwm = gerak.base_speed
-            self.sub_state1 = "MAJU"
+            robot.state.naikturun_sub_state1 = "MAJU"
 
-        elif self.sub_state1 == "MAJU":
+        elif robot.state.naikturun_sub_state1 == "MAJU":
             if (robot.sensor.jarak_depan <= 100):
                 gerak.stop(robot)
-                self.then = time.time()
-                self.sub_state1 = "PASKAN"
+                robot.state.naikturun_then = time.time()
+                robot.state.naikturun_sub_state1 = "PASKAN"
 
             # elif (robot.sensor.jarak_depan > 50 and robot.sensor.jarak_depan < 200):
             #     gerak.base_speed = 30
@@ -85,67 +71,67 @@ class GerakanNaikTurun:
             else:
                 gerak.maju(robot)
             
-        elif self.sub_state1 == "PASKAN":
+        elif robot.state.naikturun_sub_state1 == "PASKAN":
             # Panggil fungsi maju ke jarak 2cm
             gerak.hadap_sudut(robot)
             
             # Cek apakah sudah dekat tembok depan
             if robot.sensor.kompas == gerak.target_angle : 
                 gerak.stop(robot)
-                self.then = time.time()
+                robot.state.naikturun_then = time.time()
                 time.sleep(0.3)
-                self.sub_state1 = "NAIK"
+                robot.state.naikturun_sub_state1 = "NAIK"
             
-        elif self.sub_state1 == "NAIK":
+        elif robot.state.naikturun_sub_state1 == "NAIK":
             gerak.naik(robot)
-            if (now - self.then > 2.0):
+            if (now - robot.state.naikturun_then > 2.0):
                 gerak.stop(robot)
                 
-                self.sub_state1 = "MAJU2"
-                self.then = time.time()
+                robot.state.naikturun_sub_state1 = "MAJU2"
+                robot.state.naikturun_then = time.time()
             
-        elif self.sub_state1 == "MAJU2":
+        elif robot.state.naikturun_sub_state1 == "MAJU2":
             gerak.maju_roda_2(robot)
             if (robot.sensor.proxi_belakang == 0):
                 gerak.stop(robot)
-                self.sub_state1 = "BODY2NAIK"
-                self.then = time.time()
+                robot.state.naikturun_sub_state1 = "BODY2NAIK"
+                robot.state.naikturun_then = time.time()
                 
-        elif self.sub_state1 == "BODY2NAIK":
+        elif robot.state.naikturun_sub_state1 == "BODY2NAIK":
             gerak.turun(robot, 160)
-            if (now - self.then > 2):
+            if (now - robot.state.naikturun_then > 2):
                 gerak.stop(robot)
-                self.sub_state1 = "TENGAHPASKAN"
-                self.then = time.time()
+                robot.state.naikturun_sub_state1 = "TENGAHPASKAN"
+                robot.state.naikturun_then = time.time()
 
-        elif self.sub_state1 == "TENGAHPASKAN":
+        elif robot.state.naikturun_sub_state1 == "TENGAHPASKAN":
             gerak.base_speed = gerak.max_pwm = 30
 
             if (self.Hutan.index_rute + 1) in [1, 3, 5, 8]:
             # if (robot.sensor.ultrasonic_kiri == 0 or robot.sensor.ultrasonic_kiri > 30 or robot.sensor.ultrasonic_kanan > 30  or robot.sensor.ultrasonic_kanan == 0):
                 gerak.stop(robot)          
-                self.sub_state1 = "MAJUPASKAN"
-                self.then = time.time()
+                robot.state.naikturun_sub_state1 = "MAJUPASKAN"
+                robot.state.naikturun_then = time.time()
             else:
                 if gerak.geser_ke_tengah2(robot, 22):
                     gerak.stop(robot)          
-                    self.sub_state1 = "MAJUPASKAN"
-                    self.then = time.time()
+                    robot.state.naikturun_sub_state1 = "MAJUPASKAN"
+                    robot.state.naikturun_then = time.time()
 
-        elif self.sub_state1 == "MAJUPASKAN":
+        elif robot.state.naikturun_sub_state1 == "MAJUPASKAN":
             if robot.sensor.jarak_depan > 800 or robot.sensor.jarak_depan <= 0:
                 gerak.maju(robot)
-                if (now - self.then > 1):
+                if (now - robot.state.naikturun_then > 1):
                     gerak.stop(robot)
-                    self.sub_state1 = "PERISAPAN"
+                    robot.state.naikturun_sub_state1 = "PERISAPAN"
                     return True
             else:
                 if gerak.maju_ke_titik(robot, 350):
                     gerak.stop(robot)
-                    self.sub_state1 = "PERISAPAN"
+                    robot.state.naikturun_sub_state1 = "PERISAPAN"
                     return True
 
-        # print("jumlah Naik : ", self.jumlahNaik, " sub_state1 : ", self.sub_state1)\
+        # print("jumlah Naik : ", self.jumlahNaik, " sub_state1 : ", robot.state.naikturun_sub_state1)\
         return False
                 
     # ==============================================================
@@ -154,22 +140,22 @@ class GerakanNaikTurun:
     def _proses_turun(self, robot, gerak):
         now = time.time()
         
-        if self.sub_state2 == "PERISAPAN":
+        if robot.state.naikturun_sub_state2 == "PERISAPAN":
             gerak.base_speed = gerak.max_pwm =  20
-            self.sub_state2 = "MUNDUR"
-            # self.sub_state2 = "BODY2TURUN"
-            self.then = now
+            robot.state.naikturun_sub_state2 = "MUNDUR"
+            # robot.state.naikturun_sub_state2 = "BODY2TURUN"
+            robot.state.naikturun_then = now
 
-        elif self.sub_state2 == "MUNDUR":
+        elif robot.state.naikturun_sub_state2 == "MUNDUR":
             if (robot.sensor.proxi_belakang == 1):
                 gerak.stop(robot)
-                self.then = time.time()
+                robot.state.naikturun_then = time.time()
                 
-                self.sub_state2 = "PASKAN"
+                robot.state.naikturun_sub_state2 = "PASKAN"
             else:
                 gerak.mundur(robot)
             
-        elif self.sub_state2 == "PASKAN":
+        elif robot.state.naikturun_sub_state2 == "PASKAN":
             # Panggil fungsi maju ke jarak 2cm
             
             gerak.hadap_sudut(robot)
@@ -177,16 +163,16 @@ class GerakanNaikTurun:
             # Cek apakah sudah dekat tembok depan
             if robot.sensor.kompas == gerak.target_angle : 
                 gerak.stop(robot)
-                self.sub_state2 = "BODY2TURUN"
+                robot.state.naikturun_sub_state2 = "BODY2TURUN"
                 robot.motor.pwLogic = 1
-                self.then = time.time()
+                robot.state.naikturun_then = time.time()
             
-        elif self.sub_state2 == "BODY2TURUN":
-            if (now - self.then > 1.8):
+        elif robot.state.naikturun_sub_state2 == "BODY2TURUN":
+            if (now - robot.state.naikturun_then > 1.8):
                 gerak.stop(robot)
-                self.sub_state2 = "MUNDUR2"
-                self.then = time.time()
-            elif (now - self.then > 0.3):
+                robot.state.naikturun_sub_state2 = "MUNDUR2"
+                robot.state.naikturun_then = time.time()
+            elif (now - robot.state.naikturun_then > 0.3):
                 robot.motor.pwLogic = 0
                 gerak.naik(robot, -160)
             else:
@@ -194,34 +180,34 @@ class GerakanNaikTurun:
                 gerak.naik(robot, -160)
                     
             
-        elif self.sub_state2 == "MUNDUR2":
+        elif robot.state.naikturun_sub_state2 == "MUNDUR2":
             gerak.mundur_roda_2(robot)
             if (robot.sensor.proxi_depan == 1):
                 gerak.stop(robot)
-                self.sub_state2 = "TURUN"
-                self.then = time.time()
+                robot.state.naikturun_sub_state2 = "TURUN"
+                robot.state.naikturun_then = time.time()
                 
-        elif self.sub_state2 == "TURUN":
+        elif robot.state.naikturun_sub_state2 == "TURUN":
             gerak.turun(robot, 160)
-            if (now - self.then > 2.0):
+            if (now - robot.state.naikturun_then > 2.0):
                 gerak.stop(robot)
-                self.sub_state2 = "MUNDURPASKAN"
-                self.then = time.time()
+                robot.state.naikturun_sub_state2 = "MUNDURPASKAN"
+                robot.state.naikturun_then = time.time()
  
-        elif self.sub_state2 == "MUNDURPASKAN":
+        elif robot.state.naikturun_sub_state2 == "MUNDURPASKAN":
                
             gerak.base_speed = gerak.max_pwm = 50
             gerak.mundur(robot)
             if (robot.sensor.jarak_depan > 215 ):
                 gerak.stop(robot)
-                self.sub_state2 = "PERISAPAN"
+                robot.state.naikturun_sub_state2 = "PERISAPAN"
                 return True
             elif (robot.sensor.jarak_depan == -1 or robot.sensor.jarak_depan > 1200 ):
                 gerak.stop(robot)
                 return True
                 # Catatan: Baris di bawah ini tidak akan pernah tereksekusi karena ada return True di atasnya.
                 # Namun tetap saya biarkan seperti aslinanya.
-                self.sub_state2 = "PERISAPAN"
+                robot.state.naikturun_sub_state2 = "PERISAPAN"
 
-        # print("jumlah Naik : ", self.jumlahNaik, " sub_state1 : ", self.sub_state1)\
+        # print("jumlah Naik : ", self.jumlahNaik, " sub_state1 : ", robot.state.naikturun_sub_state1)\
         return False

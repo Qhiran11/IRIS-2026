@@ -5,22 +5,6 @@ from GerakanCapitKFS import GerakanCapitKFS
 class GerakanAmbilKFS:
     def __init__(self):
         self.capit = GerakanCapitKFS()
-        self.state = "IDLE"
-        self.start_time = 0
-        self.is_done = False
-        self.then = 0.0
-
-        # --- DURASI SETIAP FASE (Atur Sesuai Realita Mekanik) ---
-        # Waktu yang dibutuhkan untuk memastikan motor sampai di posisi tujuan
-        self.waktu_steady = 1.0     # Mundur full & putar depan biasanya butuh 1 detik
-        self.waktu_bersiap = 2.0   # Maju full ke depan biasanya butuh 1.5 detik
-        self.waktu_ambil = 2.5      # Putar belakang + Mundur full bersamaan butuh 2 detik
-        self.waktu_kembali = 1.0    # Kembali ke pose awal butuh 1 detik
-
-    def reset(self):
-        """Reset sequence agar bisa dipanggil ulang dari awal"""
-        self.state = "IDLE"
-        self.is_done = False
 
     def jalankan_kombinasi_1(self, robot, gerak):
         """
@@ -33,69 +17,68 @@ class GerakanAmbilKFS:
         # ==========================================
         # STATE 0: INISIALISASI
         # ==========================================
-        if self.state == "IDLE":
+        if robot.state.kfs_state == "IDLE":
             selesai = self.capit.putar_capit_kebelakang(robot)
-            self.then = time.time()
+            robot.state.kfs_start_time = time.time()
             if (selesai):
-                self.then = time.time()
-                self.state = "READY"
+                robot.state.kfs_state = "READY"
                 
-        elif self.state == "READY":
+        elif robot.state.kfs_state == "READY":
             self.capit.putar_capit_kedepan(robot)
             self.capit.buka(robot)
             gerak.base_speed  = 30
             gerak.max_pwm = gerak.base_speed
-            if (time.time() - self.then > 1.5):
+            if (time.time() - robot.state.kfs_then > 1.5):
                 self.capit.capit_stop(robot)
-                self.then = time.time()
-                self.state = "ROBOTMAJU"
+                robot.state.kfs_then = time.time()
+                robot.state.kfs_state = "ROBOTMAJU"
         
-        elif self.state == "ROBOTMAJU":
+        elif robot.state.kfs_state == "ROBOTMAJU":
             if (robot.sensor.jarak_depan <= 100):
                 gerak.stop(robot)
-                self.then = time.time()
-                self.state = "CAPITMAJU"
+                robot.state.kfs_then = time.time()
+                robot.state.kfs_state = "CAPITMAJU"
             else:
                 gerak.maju(robot)
         
-        elif self.state == "CAPITMAJU":
+        elif robot.state.kfs_state == "CAPITMAJU":
             self.capit.MajuMundur(robot, -800)
-            if (time.time() - self.then > 1):
+            if (time.time() - robot.state.kfs_then > 1):
                 self.capit.capit_stop(robot)
                 self.capit.MajuMundur(robot, 0)
-                self.state = "JEPIT"
+                robot.state.kfs_state = "JEPIT"
         
-        elif self.state == "JEPIT":
+        elif robot.state.kfs_state == "JEPIT":
             selesai = self.capit.jepit(robot)
             if (selesai):
-                self.state = "MUNDUR"
-                self.then = now
+                robot.state.kfs_state = "MUNDUR"
+                robot.state.kfs_then = now
         
-        elif self.state == "MUNDUR":
+        elif robot.state.kfs_state == "MUNDUR":
             self.capit.MajuMundur(robot, 800)
-            if (now - self.then > 0.8):
-                self.state = "ANGKUT"
+            if (now - robot.state.kfs_then > 0.8):
+                robot.state.kfs_state = "ANGKUT"
         
-        elif self.state == "ANGKUT":
+        elif robot.state.kfs_state == "ANGKUT":
             selesai = self.capit.putar_capit_kebelakang(robot)
             if (selesai):
-                self.state = "LEPAS"
-                self.then = now
+                robot.state.kfs_state = "LEPAS"
+                robot.state.kfs_then = now
         
-        elif self.state == "LEPAS":
+        elif robot.state.kfs_state == "LEPAS":
             selesai = self.capit.buka(robot)
             if (selesai):
-                self.state = "BACK"
-                self.then = now
+                robot.state.kfs_state = "BACK"
+                robot.state.kfs_then = now
         
-        elif self.state == "BACK":
+        elif robot.state.kfs_state == "BACK":
             self.capit.putar_capit_kedepan(robot)
-            if (time.time() - self.then > 0.5):
+            if (time.time() - robot.state.kfs_then > 0.5):
                 self.capit.capit_stop(robot)
-                self.then = time.time()
-                self.state = "FINISHED"
+                robot.state.kfs_then = time.time()
+                robot.state.kfs_state = "FINISHED"
         
-        elif self.state == "FINISHED":
+        elif robot.state.kfs_state == "FINISHED":
             self.capit.capit_stop(robot)
             robot.motor.stepper1 = 0
 

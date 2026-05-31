@@ -1,3 +1,43 @@
+# Tambahkan kelas ini sebelum class Robot
+class SystemState:
+    def __init__(self):
+        self.reset_all()
+
+    def reset_all(self):
+        """Fungsi ini bertindak seperti tombol Reset Mikrokontroler"""
+        
+        # --- 1. State Proses Utama ---
+        self.main_state = "READY"
+        self.main_temp_state = ""
+        self.main_then = 0.0
+
+        # --- 2. State Rakit Senjata ---
+        self.rakit_state = "IDLE"
+        self.rakit_start_time = 0.0
+        self.rakit_transition_start = 0.0
+        self.rakit_next_state = ""
+        self.rakit_is_done = False
+
+        # --- 3. State Naik Turun ---
+        self.naikturun_state = "IDLE"
+        self.naikturun_sub_state = "SIAP"
+        self.naikturun_sub_state1 = "PERISAPAN"
+        self.naikturun_sub_state2 = "PERISAPAN"
+        self.naikturun_start_time = 0.0
+        self.naikturun_then = 0.0
+        self.naikturun_is_done = False
+
+        # --- 4. State Zona 3 ---
+        self.zona3_state = "READY"
+        self.zona3_then = 0.0
+
+        # --- 5. State Ambil KFS ---
+        self.kfs_state = "IDLE"
+        self.kfs_start_time = 0.0
+        self.kfs_then = 0.0
+        self.kfs_is_done = False
+
+
 class SensorData:
     def __init__(self):
         self.posisi_x = 0.0
@@ -158,3 +198,4 @@ class Robot:
         self.motor = MotorCommand()
         self.jumlah_kfs = 0
         self.zona_aktif = 1  # State awal robot
+        self.state = SystemState() # [BARU] Menambahkan State Manager terpusat
