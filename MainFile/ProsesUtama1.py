@@ -149,88 +149,88 @@ def main():
                 # robot.motor.mDorong1 = 100
                 # robot.motor.mDorong2 = -100
 
-                match STATE:
-                    case "READY":
-                        gerak.stop(robot)
-                        if (now - then > 2.0):
-                            STATE = "GO"
-                            then = now
-                    case "GO":
-                        selesai = rakit.jalankan(robot, gerak, 90, 10)
-                        if selesai:
-                            STATE = "GOGO1"
-                            break
-                            then = now
-                    case "GOGO":
-                        selesai = masukMainhua._proses_ke_tengah(robot, gerak)
-                        if selesai:
-                            STATE = "CEK_RUTE"
-                            then = now
+                # match STATE:
+                #     case "READY":
+                #         gerak.stop(robot)
+                #         if (now - then > 2.0):
+                #             STATE = "GO"
+                #             then = now
+                #     case "GO":
+                #         selesai = rakit.jalankan(robot, gerak, 90, 10)
+                #         if selesai:
+                #             STATE = "GOGO1"
+                #             break
+                #             then = now
+                #     case "GOGO":
+                #         selesai = masukMainhua._proses_ke_tengah(robot, gerak)
+                #         if selesai:
+                #             STATE = "CEK_RUTE"
+                #             then = now
 
-                    case "AMBILKFS":
-                        selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
-                        if selesai:
-                            robot.jumlah_kfs = robot.jumlah_kfs + 1
-                            # print("Ambil KFS Berhasil")
-                            STATE = "CEK_RUTE"
+                #     case "AMBILKFS":
+                #         selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
+                #         if selesai:
+                #             robot.jumlah_kfs = robot.jumlah_kfs + 1
+                #             # print("Ambil KFS Berhasil")
+                #             STATE = "CEK_RUTE"
                             
-                    # ==============================================================
-                    # SIKLUS NAVIGASI OTOMATIS
-                    # ==============================================================
-                    case "CEK_RUTE":
-                        move = hutan.get_next_move()
+                #     # ==============================================================
+                #     # SIKLUS NAVIGASI OTOMATIS
+                #     # ==============================================================
+                #     case "CEK_RUTE":
+                #         move = hutan.get_next_move()
                         
-                        if move is None:
-                            print("[NAVIGASI] Tiba di Zona 3!")
-                            STATE = "ZONA3"
-                        else:
-                            aksi, sudut_hadap, petak_tujuan = move
+                #         if move is None:
+                #             print("[NAVIGASI] Tiba di Zona 3!")
+                #             STATE = "ZONA3"
+                #         else:
+                #             aksi, sudut_hadap, petak_tujuan = move
                             
-                            # Set target kompas sesuai perintah otak navigasi
-                            gerak.target_angle = sudut_hadap 
+                #             # Set target kompas sesuai perintah otak navigasi
+                #             gerak.target_angle = sudut_hadap 
                             
-                            print(f"[NAVIGASI] Menuju Petak {petak_tujuan}. Aksi: {aksi}. Hadap: {sudut_hadap}°")
+                #             print(f"[NAVIGASI] Menuju Petak {petak_tujuan}. Aksi: {aksi}. Hadap: {sudut_hadap}°")
                             
-                            # Beri waktu robot untuk berputar DULU sebelum eksekusi mekanik
-                            then = now
-                            STATE = "PUTAR_POSISI"
-                            TEMP_STATE = aksi # Simpan NAIK atau TURUN di memori sementara
+                #             # Beri waktu robot untuk berputar DULU sebelum eksekusi mekanik
+                #             then = now
+                #             STATE = "PUTAR_POSISI"
+                #             TEMP_STATE = aksi # Simpan NAIK atau TURUN di memori sementara
                             
-                    case "PUTAR_POSISI":
-                        # Putar sampai pas di target angle (Toleransi 2 derajat)
-                        if (robot.sensor.kompas >= gerak.target_angle - 2 and robot.sensor.kompas <= gerak.target_angle + 2):
-                            gerak.stop(robot)
-                            if (now - then > 0.1): # Delay stabil 0.5 detik
-                                STATE = TEMP_STATE # Lanjut ke aksi "NAIK" atau "TURUN"
-                        else:
-                            gerak.base_speed = 60
-                            gerak.hadap_sudut(robot)
-                            then = now
+                #     case "PUTAR_POSISI":
+                #         # Putar sampai pas di target angle (Toleransi 2 derajat)
+                #         if (robot.sensor.kompas >= gerak.target_angle - 2 and robot.sensor.kompas <= gerak.target_angle + 2):
+                #             gerak.stop(robot)
+                #             if (now - then > 0.1): # Delay stabil 0.5 detik
+                #                 STATE = TEMP_STATE # Lanjut ke aksi "NAIK" atau "TURUN"
+                #         else:
+                #             gerak.base_speed = 60
+                #             gerak.hadap_sudut(robot)
+                #             then = now
                             
-                    case "NAIK":
-                        selesai = masukMainhua._proses_naik(robot, gerak)
-                        if selesai:
-                            print("[NAVIGASI] Naik Selesai.")
-                            hutan.step_selesai() # Update array jalur ke petak berikutnya
-                            STATE = "CEK_RUTE"   # Looping baca rute baru
+                #     case "NAIK":
+                #         selesai = masukMainhua._proses_naik(robot, gerak)
+                #         if selesai:
+                #             print("[NAVIGASI] Naik Selesai.")
+                #             hutan.step_selesai() # Update array jalur ke petak berikutnya
+                #             STATE = "CEK_RUTE"   # Looping baca rute baru
                             
-                    case "TURUN":
-                        selesai = masukMainhua._proses_turun(robot, gerak)
-                        if selesai:
-                            print("[NAVIGASI] Turun Selesai.")
-                            hutan.step_selesai() # Update array jalur ke petak berikutnya
-                            STATE = "CEK_RUTE"   # Looping baca rute baru
+                #     case "TURUN":
+                #         selesai = masukMainhua._proses_turun(robot, gerak)
+                #         if selesai:
+                #             print("[NAVIGASI] Turun Selesai.")
+                #             hutan.step_selesai() # Update array jalur ke petak berikutnya
+                #             STATE = "CEK_RUTE"   # Looping baca rute baru
 
-                    case "DATAR":
-                        print("[NAVIGASI] Rute Datar belum dibuat. Skip petak.")
-                        hutan.step_selesai()
-                        STATE = "CEK_RUTE"
+                #     case "DATAR":
+                #         print("[NAVIGASI] Rute Datar belum dibuat. Skip petak.")
+                #         hutan.step_selesai()
+                #         STATE = "CEK_RUTE"
 
-                    # ==============================================================
-                    case "ZONA3":
-                        selesai = zona3.logic_zona3(robot, gerak)
-                        if selesai:
-                            break
+                #     # ==============================================================
+                #     case "ZONA3":
+                #         selesai = zona3.logic_zona3(robot, gerak)
+                #         if selesai:
+                #             break
 
 
                     

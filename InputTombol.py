@@ -1,92 +1,74 @@
 import Jetson.GPIO as GPIO
 import time
 
-class MatrixKeypad:
-    def __init__(self):
-        # 1. Tentukan Pin (Gunakan penomoran BOARD/Fisik pada Jetson Nano)
-        # Pastikan pin ini aman dan tidak dipakai oleh I2C/SPI tanpa sengaja
-        self.ROW_PINS = [31, 13, 11, 7]    # 4 Pin untuk Baris (R1, R2, R3, R4)
-        self.COL_PINS = [37, 35, 33]
+class TombolKontrol:
+    def __init__(self, pin_start=31, pin_reset=33):
+        """
+        Menggunakan penomoran pin BOARD (Fisik).
+        Default: 
+        - Tombol Start di Pin 31
+        - Tombol Reset di Pin 33
+        """
+        self.PIN_START = pin_start
+        self.PIN_RESET = pin_reset
 
-        # 2. Pemetaan Layout Tombol 
-        # Sesuaikan dengan bentuk fisik D-Pad / Keypad Anda
-        self.KEY_MAP = [
-            ['1', '2', '3'],
-            ['4', '5', '6'],
-            ['7', '8', '9'],
-            ['*', '0', '#']
-        ]
-
-        # 3. Setup GPIO
+        # Setup GPIO
         GPIO.setmode(GPIO.BOARD)
-        # GPIO.setmode(GPIO.BCM)
         
-        # Setup Kolom sebagai Input dengan Pull-Up Internal (Default HIGH)
-        for col in self.COL_PINS:
-            GPIO.setup(col, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        
-        # Setup Baris sebagai Output, default HIGH
-        for row in self.ROW_PINS:
-            GPIO.setup(row, GPIO.OUT, initial=GPIO.HIGH)
+        # Setup sebagai Input dengan Pull-Up Internal (Default bernilai HIGH)
+        # Jika tombol ditekan, arus mengalir ke Ground (GND), sehingga terbaca LOW.
+        GPIO.setup(self.PIN_START, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(self.PIN_RESET, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             
-        self.last_key_pressed = None
-        self.last_press_time = 0
+        # Variabel untuk Debounce (Mencegah tombol terbaca berkali-kali dalam 1 ketukan)
+        self.last_press_time_start = 0
+        self.last_press_time_reset = 0
+        self.debounce_delay = 0.5 # Jeda 0.5 detik antar ketukan
 
-    def baca_tombol(self):
-        """Membaca tombol mana yang sedang ditekan"""
-        pressed_key = None
-        
-        # Scan tiap baris
-        for i, row in enumerate(self.ROW_PINS):
-            # Tarik baris ini ke LOW
-            GPIO.output(row, GPIO.LOW)
-            
-            # Cek apakah ada kolom yang ikut menjadi LOW (karena ditekan)
-            for j, col in enumerate(self.COL_PINS):
-                if GPIO.input(col) == GPIO.LOW:
-                    pressed_key = self.KEY_MAP[i][j]
-            
-            # Kembalikan baris ke HIGH agar tidak mengganggu baris lain
-            GPIO.output(row, GPIO.HIGH)
-            
-        # --- Fitur Anti-Bouncing (Debounce) ---
+    def baca_start(self):
+        """Mengembalikan True jika tombol Start ditekan"""
         now = time.time()
-        if pressed_key is not None:
-            # Cegah tombol terbaca ribuan kali dalam 1 detik
-            if pressed_key != self.last_key_pressed or (now - self.last_press_time) > 0.5:
-                self.last_key_pressed = pressed_key
-                self.last_press_time = now
-                return pressed_key
-        else:
-            # Jika tidak ada yang ditekan, reset state
-            if (now - self.last_press_time) > 0.2:
-                self.last_key_pressed = None
+        # Jika pin LOW, artinya tombol sedang ditekan (terhubung ke GND)
+        if GPIO.input(self.PIN_START) == GPIO.LOW:
+            if (now - self.last_press_time_start) > self.debounce_delay:
+                self.last_press_time_start = now
+                return True
+        return False
 
-        return None
+    def baca_reset(self):
+        """Mengembalikan True jika tombol Reset ditekan"""
+        now = time.time()
+        if GPIO.input(self.PIN_RESET) == GPIO.LOW:
+            if (now - self.last_press_time_reset) > self.debounce_delay:
+                self.last_press_time_reset = now
+                return True
+        return False
 
     def cleanup(self):
-        """Wajib dipanggil saat program berhenti"""
+        """Wajib dipanggil saat program berhenti untuk melepaskan pin GPIO"""
         GPIO.cleanup()
 
 # ==============================================================
 # BLOK TESTING MANUAL (Hanya berjalan jika file ini di-run langsung)
 # ==============================================================
 if __name__ == "__main__":
-    print("Memulai Testing Matrix Keypad...")
-    print("Tekan tombol di D-Pad/Keypad Anda. Tekan 'Ctrl+C' untuk keluar.")
+    print("Memulai Testing Tombol Start & Reset...")
+    print("Tekan tombol. Tekan 'Ctrl+C' untuk keluar.")
     
-    keypad = MatrixKeypad()
+    tombol = TombolKontrol()
     
     try:
         while True:
-            tombol = keypad.baca_tombol()
-            if tombol:
-                print(f"[TEST] Tombol ditekan: {tombol}")
+            if tombol.baca_start():
+                print(f"[TEST] Tombol START ditekan!")
+                
+            if tombol.baca_reset():
+                print(f"[TEST] Tombol RESET ditekan!")
             
             time.sleep(0.05) # Delay kecil untuk stabilitas CPU
             
     except KeyboardInterrupt:
         print("\nTesting dihentikan oleh user.")
     finally:
-        keypad.cleanup()
+        tombol.cleanup()
         print("GPIO Cleanup selesai.")

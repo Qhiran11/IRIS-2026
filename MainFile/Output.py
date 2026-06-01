@@ -10,6 +10,7 @@ class ArduinoDueWriter:
         self.ser = None
         self.last_sent_time = 0
         self.temp_speeds = []
+        self.last_reconnect_time = 0
         self.connect()
 
     def connect(self):
@@ -20,6 +21,7 @@ class ArduinoDueWriter:
             return True
         except Exception as e:
             print(f"[OUTPUT] Gagal terhubung ke Arduino Due: {e}")
+            self.ser = None
             return False
 
     def kirim_data(self, array_output):
@@ -29,6 +31,11 @@ class ArduinoDueWriter:
         menjadi paket byte, lalu mengirimnya ke Arduino Due.
         """
         if not self.ser or not self.ser.is_open:
+            now = time.time()
+            if now - self.last_reconnect_time > 2.0:
+                self.last_reconnect_time = now
+                print(f"[OUTPUT] Port terputus. Mencoba menghubungkan kembali ke Arduino Due di {self.port}...")
+                self.connect()
             return False
 
         current_time = time.time()
@@ -62,8 +69,10 @@ class ArduinoDueWriter:
                 return True
                 
         except Exception as e:
-            # Menangkap error jika kabel Arduino tercabut di tengah jalan
-            # Tutup port agar aman dan tidak memicu error beruntun
-            self.ser.close() 
+            print(f"[OUTPUT] Error penulisan serial: {e}")
+            try:
+                self.ser.close() 
+            except:
+                pass
             
         return False

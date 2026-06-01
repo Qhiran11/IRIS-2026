@@ -16,13 +16,10 @@ from MappingArena import MappingArena
 from Zona3 import Zona3
 from MappingHutan import MappingHutan
 from TelemetriJetson import TelemetryServer
-
-
 from GerakanDasar import GerakanDasar
-
-
 from InputKamera import KameraSensor
 from InputKameraQR import DeteksiQR
+from InputTombol import TombolKontrol
 
 def main():
     print("Memulai Program Utama KRAI...")
@@ -35,8 +32,8 @@ def main():
     telemetri.start()
     # ------------------------------
     
-    sensor = SensorReader(port='/dev/ttyACM0', baudrate=115200) 
-    writer = ArduinoDueWriter(port='/dev/ttyACM1', baudrate=115200)
+    sensor = SensorReader(port='/dev/ttyUSB0', baudrate=115200) 
+    writer = ArduinoDueWriter(port='/dev/ttyACM0', baudrate=115200)
 
     arena = MappingArena()
     hutan = MappingHutan()
@@ -62,15 +59,10 @@ def main():
     prosesAmbilKfs = False
 
     bool_putar_ganti = "NAIK"
-
-
-
     detectKfs = ""
-    # robot.state.main_state = "PROSESTURUN"
+    tombol_jetson = TombolKontrol(pin_start=31, pin_reset=33)
     
-# ... (Kode inisialisasi di atas tetap sama) ...
-    
-    is_running = False # Flag penanda apakah robot sedang standby atau running
+    is_running = True # Flag penanda apakah robot sedang standby atau running
 
     try:
         # kamera.start() # Mulai sensor kamera di background
@@ -96,19 +88,18 @@ def main():
                     gerak.stop(robot)
                     
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
-                    if robot.sensor.tombol_start == 1: 
+                    if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
                         robot.state.reset_all() # Reset semua state ke kondisi awal
                         robot.jumlah_kfs = 0    # Reset counter fisik
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
                         
                         is_running = True       # Ubah mode menjadi Running
-                        time.sleep(0.5)         # Debounce manual agar tidak terbaca dobel
                     
-                    # Kirim perintah stop ke motor dan ulangi loop baca sensor
-                    writer.kirim_data(robot.motor.get_array_output())
-                    time.sleep(0.01)
-                    continue # Skip semua logika di bawah, kembali ke awal while
+                        # Kirim perintah stop ke motor dan ulangi loop baca sensor
+                        writer.kirim_data(robot.motor.get_array_output())
+                        time.sleep(0.01)
+                        continue # Skip semua logika di bawah, kembali ke awal while
 
                 # ==============================================================
                 # FASE B: RUNNING (Program Utama Berjalan)
@@ -118,12 +109,11 @@ def main():
                     # Catatan: Sesuaikan 'tombol_reset' dengan variabel sensor yang Anda punya.
                     # Jika Anda menggunakan tombol yang sama untuk Start dan Reset, 
                     # pastikan Anda memberi jeda yang cukup, atau gunakan tombol/switch yang berbeda.
-                    if robot.sensor.switch == 1: # Contoh menggunakan input 'switch' sebagai tombol reset
+                    if robot.sensor.tombol_reset == 0:
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
                         gerak.stop(robot)
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         is_running = False # Kembalikan program ke fase Standby
-                        time.sleep(0.5)    # Debounce manual
                         continue # Langsung melompat kembali ke awal loop
                         
                     # --- LOGIKA STATE MACHINE UTAMA ---
@@ -207,11 +197,19 @@ def main():
                             # is_running = False 
                             pass # Biarkan atau lakukan aksi lain
 
+                
+                
                 # 4. EKSTRAK DAN KIRIM KE ARDUINO DUE (Hanya dieksekusi jika sedang is_running)
                 if is_running:
+                    # gerak.maju(robot)
                     data_keluar = robot.motor.get_array_output()
+                    
                     writer.kirim_data(data_keluar) 
 
+           
+           
+           
+           
             # 5. ISTIRAHAT CPU (Sangat penting agar terminal tidak freeze)
             time.sleep(0.01)
     

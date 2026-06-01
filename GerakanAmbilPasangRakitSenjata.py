@@ -28,6 +28,7 @@ class RakitSenjata:
 
         elif robot.state.rakit_state == "IDLE":
             print("[SENJATA] Memulai sequence RAKIT...")
+            robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
             self.transition_to("PERSIAPAN", now, robot, gerak)
 
         elif robot.state.rakit_state == "PERSIAPAN":

@@ -13,6 +13,8 @@ class TelemetryServer:
         self.token = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
         self.berjalan = False
         self.client_socket = None
+        self.latest_data = None
+        self.data_lock = threading.Lock()
 
         # Setup UDP untuk Broadcast (Agar komputer monitor menemukan IP Jetson)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -34,6 +36,7 @@ class TelemetryServer:
         # Jalankan di background agar tidak membebani ProsesUtama.py
         threading.Thread(target=self._broadcast_token, daemon=True).start()
         threading.Thread(target=self._terima_koneksi, daemon=True).start()
+        threading.Thread(target=self._kirim_data_loop, daemon=True).start()
 
     def _broadcast_token(self):
         while self.berjalan:
@@ -55,30 +58,46 @@ class TelemetryServer:
             except Exception:
                 pass
 
-    def kirim_data(self, robot):
-        if not self.client_socket:
-            return
+    def _kirim_data_loop(self):
+        while self.berjalan:
+            client = self.client_socket
+            if client:
+                data_to_send = None
+                with self.data_lock:
+                    if self.latest_data:
+                        data_to_send = self.latest_data
+                
+                if data_to_send:
+                    try:
+                        # Ubah ke JSON dan kirim ke komputer monitor
+                        pesan = json.dumps(data_to_send) + "\n"
+                        client.sendall(pesan.encode('utf-8'))
+                    except Exception:
+                        # Jika komputer monitor terputus
+                        try:
+                            client.close()
+                        except Exception:
+                            pass
+                        if self.client_socket == client:
+                            self.client_socket = None
+            time.sleep(0.05) # Batasi pengiriman telemetry ke 20 Hz (setiap 50ms)
 
-        # ARCHITECTURE CLEAN CODE: Ekstrak dictionary secara dinamis!
-        # Kode ini akan otomatis mengambil SEMUA variabel di robot_data.py
-        # tanpa Anda harus mengetiknya satu per satu.
+    def kirim_data(self, robot):
+        # Ambil data robot secara cepat (non-blocking)
         data = {
             "Sensor": {k: v for k, v in robot.sensor.__dict__.items() if not k.startswith('_')},
             "Motor": {k: v for k, v in robot.motor.__dict__.items() if not k.startswith('_')},
             "Status Robot": {
-                "Jumlah KFS": robot.jumlah_kfs,
-                "Zona Aktif": robot.zona_aktif
+                "Main State": robot.state.main_state,
+                "Rakit State": robot.state.rakit_state,
+                "Naik Turun State": robot.state.naikturun_state,
+                "Zona 3 State": robot.state.zona3_state,
+                "KFS State": robot.state.kfs_state,
+                "Gerakan Dasar Aktif": robot.state.gerak_dasar_aktif,
             }
         }
-
-        try:
-            # Ubah ke JSON dan kirim ke komputer monitor
-            pesan = json.dumps(data) + "\n"
-            self.client_socket.sendall(pesan.encode('utf-8'))
-        except Exception:
-            # Jika komputer monitor terputus
-            self.client_socket.close()
-            self.client_socket = None
+        with self.data_lock:
+            self.latest_data = data
 
     def stop(self):
         self.berjalan = False

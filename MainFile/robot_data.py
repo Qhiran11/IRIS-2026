@@ -1,20 +1,25 @@
+import time # Tambahkan ini di bagian atas file
 # Tambahkan kelas ini sebelum class Robot
 class SystemState:
     def __init__(self):
         self.reset_all()
+        self.gerak_dasar_aktif = "IDLE"
 
     def reset_all(self):
         """Fungsi ini bertindak seperti tombol Reset Mikrokontroler"""
+        now = time.time() # Ambil waktu sekarang
+
+        
         
         # --- 1. State Proses Utama ---
         self.main_state = "READY"
         self.main_temp_state = ""
-        self.main_then = 0.0
+        self.main_then = now # Ubah dari 0.0
 
         # --- 2. State Rakit Senjata ---
         self.rakit_state = "IDLE"
-        self.rakit_start_time = 0.0
-        self.rakit_transition_start = 0.0
+        self.rakit_start_time = now # Ubah dari 0.0
+        self.rakit_transition_start = now # Ubah dari 0.0
         self.rakit_next_state = ""
         self.rakit_is_done = False
 
@@ -23,18 +28,18 @@ class SystemState:
         self.naikturun_sub_state = "SIAP"
         self.naikturun_sub_state1 = "PERISAPAN"
         self.naikturun_sub_state2 = "PERISAPAN"
-        self.naikturun_start_time = 0.0
-        self.naikturun_then = 0.0
+        self.naikturun_start_time = now # Ubah dari 0.0
+        self.naikturun_then = now # Ubah dari 0.0
         self.naikturun_is_done = False
 
         # --- 4. State Zona 3 ---
         self.zona3_state = "READY"
-        self.zona3_then = 0.0
+        self.zona3_then = now # Ubah dari 0.0
 
         # --- 5. State Ambil KFS ---
         self.kfs_state = "IDLE"
-        self.kfs_start_time = 0.0
-        self.kfs_then = 0.0
+        self.kfs_start_time = now # Ubah dari 0.0
+        self.kfs_then = now # Ubah dari 0.0
         self.kfs_is_done = False
 
 
@@ -50,22 +55,15 @@ class SensorData:
         self.switch = 0
         self.temp_kompas = 0
         self.kompas = 0
-        self.jarak_depan = 0
-        self.jarak_kiri = 0
-        self.sensor_jarak = 0
         self.proxi_belakang = 0
         self.proxi_depan = 1
-
-        self.tombak_terdeteksi = False
-        self.tombak_x = 0
-        self.tombak_y = 0
-        self.koreksi_pid_tombak = 0
 
         # Di dalam class Sensor atau RobotData Anda
         self.data_qr = ""
         
 
         # sensor ultrasonic
+        self.jarak_depan = 0
         self.ultrasonic_kiri = 0
         self.ultrasonic_kanan = 0
         self.ultrasonic_belakang = 0
@@ -78,10 +76,8 @@ class SensorData:
         self.limit_capitBuka      = 1
         self.limit_capitJepit      = 1
 
-
-        self.sensor_garis_1 = False
-        self.sensor_garis_2 = False
-        self.tombol_start = 0
+        self.tombol_start = 1
+        self.tombol_reset = 1
         
         # Data Cadangan
         self.kompas2 = 0
@@ -91,8 +87,7 @@ class SensorData:
         self.kfs_terdeteksi = 0
 
         self.sensor_kfs_depan = 0
-        self.sensor_garis_1 = 0
-        self.sensor_garis_2 = 0
+
 
         self.posisi_di_hutan = 0
 
@@ -101,7 +96,7 @@ class SensorData:
         Memetakan array[12] dari STM32 ke variabel objek.
         Sesuaikan index [0-11] dengan urutan pengiriman di STM32 Anda.
         """
-        if arr is not None and len(arr) >= 12:
+        if arr is not None and len(arr) >= 17:
             # Contoh pemetaan (Silakan sesuaikan dengan urutan di STM32)
             
             # 1. Ambil Offset di pembacaan pertama
@@ -143,8 +138,8 @@ class SensorData:
             self.kfs_terdeteksi = arr[13]
 
             self.sensor_kfs_depan = arr[14]
-            self.sensor_garis_1 = arr[15]
-            self.sensor_garis_2 = arr[16]
+            self.tombol_start = arr[15]
+            self.tombol_reset = arr[16]
 
 
 
@@ -199,3 +194,4 @@ class Robot:
         self.jumlah_kfs = 0
         self.zona_aktif = 1  # State awal robot
         self.state = SystemState() # [BARU] Menambahkan State Manager terpusat
+        
