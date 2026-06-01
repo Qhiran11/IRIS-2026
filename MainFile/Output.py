@@ -14,15 +14,26 @@ class ArduinoDueWriter:
         self.connect()
 
     def connect(self):
-        try:
-            # Timeout kecil agar program tidak freeze
-            self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
-            print(f"[OUTPUT] Berhasil terhubung ke Arduino Due di port {self.port}")
-            return True
-        except Exception as e:
-            print(f"[OUTPUT] Gagal terhubung ke Arduino Due: {e}")
-            self.ser = None
-            return False
+        # Tentukan daftar port alternatif untuk mengantisipasi pergeseran port (ttyACM0 <-> ttyACM1)
+        ports_to_try = [self.port]
+        if "ttyACM0" in self.port:
+            ports_to_try.append(self.port.replace("ttyACM0", "ttyACM1"))
+        elif "ttyACM1" in self.port:
+            ports_to_try.append(self.port.replace("ttyACM1", "ttyACM0"))
+
+        for p in ports_to_try:
+            try:
+                # Menambahkan timeout & write_timeout agar tidak memblokir thread Jetson jika port hang
+                self.ser = serial.Serial(p, self.baudrate, timeout=0.05, write_timeout=0.05)
+                print(f"[OUTPUT] Berhasil terhubung ke Arduino Due di port {p}")
+                self.port = p # Update port aktif dengan yang berhasil terhubung
+                return True
+            except Exception:
+                pass
+
+        print(f"[OUTPUT] Gagal terhubung ke Arduino Due di port mana pun: {ports_to_try}")
+        self.ser = None
+        return False
 
     def kirim_data(self, array_output):
         """

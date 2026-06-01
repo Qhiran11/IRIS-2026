@@ -80,6 +80,11 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
 
+                # Print status berkala setiap 0.5 detik agar pengguna tahu loop berjalan aktif
+                if now - last_change_time > 0.5:
+                    last_change_time = now
+                    print(f"[LIVE LOOP] Main State: {robot.state.main_state} | Kompas: {robot.sensor.kompas} | Start Button: {robot.sensor.tombol_start}")
+
                 # ==============================================================
                 # FASE A: STANDBY (Tunggu Tombol Start)
                 # ==============================================================
