@@ -38,7 +38,7 @@ unsigned long lastS2 = 0, lastComm = 0;
 
 const int pinT[3] = {42, 38, 36};
 const int pinE[3] = {44, 46, 34};
-const long timeout[3] = {25000, 10000, 8000}; 
+const long timeout[3] = {25000, 15000, 15000}; 
 
 const int ProxiBelakang = -1;
 const int ProxiDepan = 28;

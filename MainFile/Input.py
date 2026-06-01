@@ -8,57 +8,24 @@ class SensorReader:
         self.port = port
         self.baudrate = baudrate
         self.ser = None
-        self.last_reconnect_time = 0
-        self.last_success_time = time.time()
         self.connect()
 
     def connect(self):
-        # Tentukan daftar port alternatif untuk mengantisipasi pergeseran port (ttyUSB0 <-> ttyUSB1)
-        ports_to_try = [self.port]
-        if "ttyUSB0" in self.port:
-            ports_to_try.append(self.port.replace("ttyUSB0", "ttyUSB1"))
-        elif "ttyUSB1" in self.port:
-            ports_to_try.append(self.port.replace("ttyUSB1", "ttyUSB0"))
-
-        for p in ports_to_try:
-            try:
-                # Menambahkan timeout & write_timeout agar tidak memblokir thread Jetson jika port hang
-                self.ser = serial.Serial(p, self.baudrate, timeout=0.05, write_timeout=0.05)
-                print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {p}")
-                self.port = p # Update port aktif dengan yang berhasil terhubung
-                self.last_success_time = time.time() # Reset success time
-                return True
-            except Exception:
-                pass
-
-        print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA di port mana pun: {ports_to_try}")
-        self.ser = None
-        return False
+        try:
+            self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
+            print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}")
+            return True
+        except Exception as e:
+            print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")
+            return False
 
     def baca_data(self):
         """
         Membaca paket 17 data int16 (Total 39 byte).
         Struktur Paket: [AA 55] [34 byte data] [CRC] [0D 0A]
         """
-        now = time.time()
-
-        # 1. Cek Auto-Reconnection jika port terputus
         if not self.ser or not self.ser.is_open:
-            if now - self.last_reconnect_time > 2.0:
-                self.last_reconnect_time = now
-                print(f"[INPUT] Port terputus. Mencoba menghubungkan kembali ke ARDUINO MEGA di {self.port}...")
-                self.connect()
             return None 
-
-        # 2. Heartbeat Timeout Check (Jika port terbuka tetapi tidak ada data valid masuk)
-        if now - self.last_success_time > 1.0:
-            print(f"[INPUT] Timeout! Tidak ada data valid selama 1.0 detik. Menutup port untuk memaksa re-koneksi...")
-            try:
-                self.ser.close()
-            except:
-                pass
-            self.last_reconnect_time = now
-            return None
 
         try:
             # Perhitungan panjang paket baru:
@@ -95,16 +62,12 @@ class SensorReader:
                                     # '<17h' = Little Endian, 17 buah short integer (16-bit)
                                     decoded_data = struct.unpack('<17h', data_payload)
                                     
-                                    self.last_success_time = time.time() # Update heartbeat sukses
                                     return list(decoded_data)
                                 else:
                                     # print("CRC Error!")
                                     pass
         except Exception as e:
-            print(f"[INPUT] Error pembacaan serial: {e}")
-            try:
-                self.ser.close()
-            except:
-                pass
+            # print(f"Error pembacaan: {e}")
+            pass
             
         return None

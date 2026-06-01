@@ -45,16 +45,16 @@ class SystemState:
 
 class SensorData:
     def __init__(self):
-        self.posisi_x = 0.0
-        self.posisi_y = 0.0
-
-
-        self.MAIN_STATE = "IDLE"
+        self.temp_kompas = 0
+        self.kompas = 0
+        # sensor ultrasonic
+        self.jarak_depan = 0
+        self.ultrasonic_kiri = 0
+        self.ultrasonic_kanan = 0
+        self.ultrasonic_belakang = 0
         
         # --- DATA SENSOR (30% Bilangan Bulat / Int) ---
         self.switch = 0
-        self.temp_kompas = 0
-        self.kompas = 0
         self.proxi_belakang = 0
         self.proxi_depan = 1
 
@@ -62,11 +62,7 @@ class SensorData:
         self.data_qr = ""
         
 
-        # sensor ultrasonic
-        self.jarak_depan = 0
-        self.ultrasonic_kiri = 0
-        self.ultrasonic_kanan = 0
-        self.ultrasonic_belakang = 0
+        
         
         # --- DATA BINARY (70% 0 atau 1) ---
         self.kfs_terdeteksi = False
@@ -78,6 +74,9 @@ class SensorData:
 
         self.tombol_start = 1
         self.tombol_reset = 1
+
+        self.posisi_x = 0.0
+        self.posisi_y = 0.0
         
         # Data Cadangan
         self.kompas2 = 0

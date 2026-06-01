@@ -62,7 +62,7 @@ def main():
     detectKfs = ""
     tombol_jetson = TombolKontrol(pin_start=31, pin_reset=33)
     
-    is_running = True # Flag penanda apakah robot sedang standby atau running
+    is_running = False # Flag penanda apakah robot sedang standby atau running
 
     try:
         # kamera.start() # Mulai sensor kamera di background
@@ -79,18 +79,13 @@ def main():
             # Pastikan data ada (tidak None/kabel tidak putus)
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
-
-                # Print status berkala setiap 0.5 detik agar pengguna tahu loop berjalan aktif
-                if now - last_change_time > 0.5:
-                    last_change_time = now
-                    print(f"[LIVE LOOP] Main State: {robot.state.main_state} | Kompas: {robot.sensor.kompas} | Start Button: {robot.sensor.tombol_start}")
-
-                # ==============================================================
-                # FASE A: STANDBY (Tunggu Tombol Start)
-                # ==============================================================
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
-                    gerak.stop(robot)
+                    # gerak.target_angle = 90
+                    gerak.stop(robot) #    <==================TESTING
+                    data_keluar = robot.motor.get_array_output()                    
+                    writer.kirim_data(data_keluar) 
+
                     
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
                     if robot.sensor.tombol_start == 0:
@@ -100,20 +95,12 @@ def main():
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
                         
                         is_running = True       # Ubah mode menjadi Running
-                    
-                        # Kirim perintah stop ke motor dan ulangi loop baca sensor
-                        writer.kirim_data(robot.motor.get_array_output())
                         time.sleep(0.01)
                         continue # Skip semua logika di bawah, kembali ke awal while
 
-                # ==============================================================
-                # FASE B: RUNNING (Program Utama Berjalan)
-                # ==============================================================
                 else:
-                    # --- CEK TOMBOL RESET KAPAN SAJA ---
-                    # Catatan: Sesuaikan 'tombol_reset' dengan variabel sensor yang Anda punya.
-                    # Jika Anda menggunakan tombol yang sama untuk Start dan Reset, 
-                    # pastikan Anda memberi jeda yang cukup, atau gunakan tombol/switch yang berbeda.
+
+
                     if robot.sensor.tombol_reset == 0:
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
                         gerak.stop(robot)
@@ -124,12 +111,12 @@ def main():
                     # --- LOGIKA STATE MACHINE UTAMA ---
                     if robot.state.main_state == "READY":
                         gerak.stop(robot)
-                        if (now - robot.state.main_then > 2.0):
+                        if (now - robot.state.main_then > 0.3):
                             robot.state.main_state = "GO"
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
-                        selesai = rakit.jalankan(robot, gerak, 90, 10)
+                        selesai = rakit.jalankan(robot, gerak, 90, 7)
                         if selesai:
                             robot.state.main_state = "GOGO1"
                             robot.state.main_then = now

@@ -68,8 +68,8 @@ class MonitorDasborApp(ctk.CTk):
         # Kolom Kiri: Sensor
         left_frame = ctk.CTkFrame(main_frame)
         left_frame.pack(side="left", fill="both", expand=True, padx=5)
-        ctk.CTkLabel(left_frame, text="📡 Data Memori Sensor", font=("Arial", 14, "bold"), text_color="#3498DB").pack(pady=5)
-        self.box_sensor = ctk.CTkTextbox(left_frame, font=("Courier", 14), state="disabled")
+        ctk.CTkLabel(left_frame, text="📡 Data Memori Sensor", font=("Arial", 20, "bold"), text_color="#3498DB").pack(pady=5)
+        self.box_sensor = ctk.CTkTextbox(left_frame, font=("Courier", 20), state="disabled")
         self.box_sensor.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Kolom Kanan: Dibagi Atas (Status) dan Bawah (Motor)
@@ -79,8 +79,8 @@ class MonitorDasborApp(ctk.CTk):
         # Kanan Atas: Status Robot
         top_right = ctk.CTkFrame(right_frame)
         top_right.pack(side="top", fill="both", expand=True, pady=(0, 5))
-        ctk.CTkLabel(top_right, text="🤖 Status Utama Robot", font=("Arial", 14, "bold"), text_color="#F1C40F").pack(pady=5)
-        self.box_status = ctk.CTkTextbox(top_right, font=("Courier", 14), state="disabled")
+        ctk.CTkLabel(top_right, text="🤖 Status Utama Robot", font=("Arial", 20, "bold"), text_color="#F1C40F").pack(pady=5)
+        self.box_status = ctk.CTkTextbox(top_right, font=("Courier", 20), state="disabled")
         self.box_status.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Kanan Bawah: Data Motor

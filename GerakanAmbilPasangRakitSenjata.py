@@ -45,19 +45,20 @@ class RakitSenjata:
                     self.transition_to("MENDEKAT", now, robot, gerak)
         
         elif robot.state.rakit_state == "MENDEKAT":
-            gerak.base_speed = 35 # Kecepatan pelan
-            gerak.max_pwm = 45
+            gerak.base_speed = 45 # Kecepatan pelan
+            gerak.max_pwm = 55
             jarak = robot.sensor.ultrasonic_belakang
-            if jarak >= (target_jarak - 1) and jarak <= (target_jarak + 1): 
+            if (jarak == -1): 
+                gerak.mundur(robot)
+                robot.state.rakit_transition_start = now            
+            elif jarak >= (target_jarak - 1) and jarak <= (target_jarak + 1): 
                 gerak.stop(robot)
-                if (now - robot.state.rakit_transition_start > 0.5): 
+                if (now - robot.state.rakit_transition_start > 0.2): 
                     print(f"[SENJATA] Tiba di posisi dekat ({target_jarak}cm).")
                     self.transition_to("GESER_KESAMPING", now, robot, gerak)
-            elif (jarak == -1): 
-                gerak.mundur(robot)
-                robot.state.rakit_transition_start = now
+
             else:
-                gerak.mundur_ke_titik(robot, target_jarak)
+                gerak.mundur(robot)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
