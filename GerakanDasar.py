@@ -36,7 +36,6 @@ class GerakanDasar:
         self.max_pwm = 120   
         self.target_angle = 0
 
-
     def _apply_motor(self, robot, FL, FR, BL, BR):
         """
         Helper untuk membatasi PWM dan mengirim ke objek motor.
@@ -69,68 +68,65 @@ class GerakanDasar:
         self.pid_jarak.reset()
 
     # =====================================================================
-    # 10 GERAKAN UTAMA (MECANUM KINEMATICS)
-    # Logika Koreksi (kor): Positif berarti harus belok kiri (Roda Kiri -, Roda Kanan +)
+    # 10 GERAKAN UTAMA (MECANUM KINEMATICS) - KOREKSI DISELARASKAN DENGAN HADAP SUDUT
     # =====================================================================
 
     def maju(self, robot):
         robot.state.gerak_dasar_aktif = "MAJU"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          self.base_speed - kor, self.base_speed + kor, 
-                          self.base_speed - kor, self.base_speed + kor)
+                          self.base_speed + kor, self.base_speed + kor, 
+                          self.base_speed - kor, self.base_speed - kor)
 
     def mundur(self, robot):
         robot.state.gerak_dasar_aktif = "MUNDUR"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          -self.base_speed - kor, -self.base_speed + kor, 
-                          -self.base_speed - kor, -self.base_speed + kor)
+                          -self.base_speed + kor, -self.base_speed + kor, 
+                          -self.base_speed - kor, -self.base_speed - kor)
 
     def kanan(self, robot): # Strafe Kanan
         robot.state.gerak_dasar_aktif = "KANAN"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        # Formasi Kanan: FL mundur, FR maju, BL maju, BR mundur
         self._apply_motor(robot, 
-                          -self.base_speed - kor,  self.base_speed + kor, 
-                           self.base_speed - kor, -self.base_speed + kor)
+                          -self.base_speed + kor,  self.base_speed + kor, 
+                           self.base_speed - kor, -self.base_speed - kor)
 
     def kiri(self, robot): # Strafe Kiri
         robot.state.gerak_dasar_aktif = "KIRI"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        # Formasi Kiri: FL maju, FR mundur, BL mundur, BR maju
         self._apply_motor(robot,  
-                           self.base_speed - kor, -self.base_speed + kor, 
-                          -self.base_speed - kor,  self.base_speed + kor)
+                           self.base_speed + kor, -self.base_speed + kor, 
+                          -self.base_speed - kor,  self.base_speed - kor)
 
-    # DIAGONAL MOVEMENT  ======================================================
+    # DIAGONAL MOVEMENT =======================================================
     def maju_diagonal_kanan(self, robot):
         robot.state.gerak_dasar_aktif = "maju diagonal kanan"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          0 - kor, self.base_speed + kor, 
-                          self.base_speed - kor, 0 + kor)
+                          0 + kor, self.base_speed + kor, 
+                          self.base_speed - kor, 0 - kor)
 
     def maju_diagonal_kiri(self, robot):
         robot.state.gerak_dasar_aktif = "maju diagonal kiri"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          self.base_speed - kor, 0 + kor, 
-                          0 - kor, self.base_speed + kor)
+                          self.base_speed + kor, 0 + kor, 
+                          0 - kor, self.base_speed - kor)
 
     def mundur_diagonal_kanan(self, robot):
         robot.state.gerak_dasar_aktif = "mundur diagonal kanan"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          -self.base_speed - kor, 0 + kor, 
-                          0 - kor, -self.base_speed + kor)
+                          -self.base_speed + kor, 0 + kor, 
+                          0 - kor, -self.base_speed - kor)
 
     def mundur_diagonal_kiri(self, robot):
         robot.state.gerak_dasar_aktif = "mundur diagonal kiri"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          0 - kor, -self.base_speed + kor, 
-                          -self.base_speed - kor, 0 + kor)
+                          0 + kor, -self.base_speed + kor, 
+                          -self.base_speed - kor, 0 - kor)
     # =========================================================================
 
     def geser_ke_tengah(self, robot, new_distance=0):
@@ -152,10 +148,11 @@ class GerakanDasar:
             speed_geser = self.pid_jarak.compute(target_kanan, jarak)
             speed_geser = max(-30, min(30, speed_geser))
         
-        # Murni Strafe (Positif = Kanan, Negatif = Kiri)
+        # Murni Strafe Jarak (Tanpa Campuran Kompas)
         self._apply_motor(robot, 
                           -speed_geser,  speed_geser, 
                            speed_geser, -speed_geser)
+        return False
     
     def maju_ke_titik(self, robot, target_jarak):
         robot.state.gerak_dasar_aktif = "maju ke titik"
@@ -168,12 +165,12 @@ class GerakanDasar:
         
         if jarak > target_jarak + 3:
             self._apply_motor(robot, 
-                              speed_approach - kor_sudut, speed_approach + kor_sudut, 
-                              speed_approach - kor_sudut, speed_approach + kor_sudut)
+                              speed_approach + kor_sudut, speed_approach + kor_sudut, 
+                              speed_approach - kor_sudut, speed_approach - kor_sudut)
         elif jarak < target_jarak - 3:
             self._apply_motor(robot, 
-                              -speed_approach - kor_sudut, -speed_approach + kor_sudut, 
-                              -speed_approach - kor_sudut, -speed_approach + kor_sudut)                
+                              -speed_approach + kor_sudut, -speed_approach + kor_sudut, 
+                              -speed_approach - kor_sudut, -speed_approach - kor_sudut)                
         else:
             self.stop(robot)
             return True
@@ -188,8 +185,8 @@ class GerakanDasar:
 
         speed_jarak = max(-self.base_speed, min(self.base_speed, speed_jarak))
         self._apply_motor(robot, 
-                          -speed_jarak - kor_sudut, -speed_jarak + kor_sudut, 
-                          -speed_jarak - kor_sudut, -speed_jarak + kor_sudut)
+                          -speed_jarak + kor_sudut, -speed_jarak + kor_sudut, 
+                          -speed_jarak - kor_sudut, -speed_jarak - kor_sudut)
 
     def geser_ke_titik_kanan(self, robot, target_jarak):
         robot.state.gerak_dasar_aktif = "geser ke titik kanan"
@@ -203,20 +200,19 @@ class GerakanDasar:
             
         speed_geser = max(-self.base_speed, min(self.base_speed, speed_geser))
         
-        # Strafe Lateral dengan koreksi sudut
         self._apply_motor(robot, 
-                          -speed_geser - kor_sudut,  speed_geser + kor_sudut, 
-                           speed_geser - kor_sudut, -speed_geser + kor_sudut)
+                          -speed_geser + kor_sudut,  speed_geser + kor_sudut, 
+                           speed_geser - kor_sudut, -speed_geser - kor_sudut)
 
     def hadap_sudut(self, robot):
         """Berputar di tempat untuk mengunci sudut tertentu menggunakan PID"""
         robot.state.gerak_dasar_aktif = "hadap sudut"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         
-        # Putar di tempat murni: Roda Kiri vs Roda Kanan berlawanan arah
+        # Master Template (Acuan Utama)
         self._apply_motor(robot, 
-                          kor, kor,  # Kiri Depan & Kiri Belakang
-                          -kor, -kor)  # Kanan Depan & Kanan Belakang
+                          kor, kor,  
+                          -kor, -kor)  
 
     # =========================================================================
     # GERAKAN NON-MECANUM (LIFTER / PENGGERAK PW)

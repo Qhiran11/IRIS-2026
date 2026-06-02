@@ -15,6 +15,7 @@ class RakitSenjata:
    
     def jalankan(self, robot, gerak, target_angle, target_jarak):
         now = time.time()
+        jarak = robot.sensor.ultrasonic_belakang
 
         # ---------------------------------------------------------
         # STATE MACHINE MENGGUNAKAN IF-ELIF
@@ -47,7 +48,7 @@ class RakitSenjata:
         elif robot.state.rakit_state == "MENDEKAT":
             gerak.base_speed = 45 # Kecepatan pelan
             gerak.max_pwm = 55
-            jarak = robot.sensor.ultrasonic_belakang
+            
             if (jarak == -1): 
                 gerak.mundur(robot)
                 robot.state.rakit_transition_start = now            
@@ -58,7 +59,7 @@ class RakitSenjata:
                     self.transition_to("GESER_KESAMPING", now, robot, gerak)
 
             else:
-                gerak.mundur(robot)
+                gerak.mundur_ke_titik(robot, target_jarak)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
@@ -83,17 +84,14 @@ class RakitSenjata:
             gerak.base_speed = 20 # Jauh lebih pelan
             gerak.max_pwm = 25
             
-            jarak = robot.sensor.ultrasonic_belakang
-            if jarak == 2: # target 2 cm
+            
+            if jarak <= target_jarak: # target 2 cm
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.5):
                     print("[SENJATA] Tiba di posisi sangat dekat (2cm).")
                     self.transition_to("RELAY_MATI_1", now, robot, gerak)
-            elif (jarak == -1):
-                gerak.mundur(robot)
-                robot.state.rakit_transition_start = now
             else:
-                gerak.mundur_ke_titik(robot, 2)
+                gerak.mundur_ke_titik(robot, target_jarak)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "RELAY_MATI_1":
@@ -105,19 +103,19 @@ class RakitSenjata:
 
         elif robot.state.rakit_state == "RELAY_MATI_2":
             # Jeda 3s sebelum lanjut ke MAJU_30CM
-            if (now - robot.state.rakit_transition_start >= 3.0):
+            if (now - robot.state.rakit_transition_start >= 2.0):
                 self.transition_to("MAJU_30CM", now, robot, gerak)
 
         elif robot.state.rakit_state == "MAJU_30CM":
             robot.motor.relay_tambahan1 = 0
             robot.motor.relay_tambahan2 = 0
-            gerak.base_speed = 60
-            gerak.max_pwm = 70
+            gerak.base_speed = 200
+            gerak.max_pwm = 255
             
-            jarak = robot.sensor.ultrasonic_belakang
+            
             if jarak >= 51 and jarak <= 53: # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
-                if (now - robot.state.rakit_transition_start > 0.5):
+                if (now - robot.state.rakit_transition_start > 0.1):
                     print("[SENJATA] Tiba di posisi 30cm.")
                     gerak.target_angle = -90
                     self.transition_to("PUTAR_NEG_90", now, robot, gerak)
@@ -129,8 +127,8 @@ class RakitSenjata:
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":
-            gerak.base_speed = 80
-            gerak.max_pwm = 90
+            gerak.base_speed = 150
+            gerak.max_pwm = 180
             gerak.hadap_sudut(robot)
             if (robot.sensor.kompas >= -92 and robot.sensor.kompas <= -88): # -90 derajat ± 2
                 if (now - robot.state.rakit_transition_start > 0.5):

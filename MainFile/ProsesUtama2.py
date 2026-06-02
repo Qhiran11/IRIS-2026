@@ -53,8 +53,8 @@ def main():
     zona3 = Zona3()
 
     # kamera = KameraSensor(robot.sensor, tampilkan_video=False)
-    kamera = DeteksiQR(robot)
-    # kamera.start()
+    kamera = DeteksiQR(robot, tampilkan_video=False)
+    kamera.start()
 
     prosesAmbilKfs = False
 
@@ -81,7 +81,7 @@ def main():
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
-                    # gerak.target_angle = 90
+                    # gerak.target_angle = -40
                     gerak.stop(robot) #    <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar) 
@@ -103,6 +103,7 @@ def main():
 
                     if robot.sensor.tombol_reset == 0:
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
+                        robot.state.reset_all()
                         gerak.stop(robot)
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         is_running = False # Kembalikan program ke fase Standby
@@ -116,7 +117,7 @@ def main():
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
-                        selesai = rakit.jalankan(robot, gerak, 90, 7)
+                        selesai = rakit.jalankan(robot, gerak, 90, 2)
                         if selesai:
                             robot.state.main_state = "GOGO1"
                             robot.state.main_then = now
