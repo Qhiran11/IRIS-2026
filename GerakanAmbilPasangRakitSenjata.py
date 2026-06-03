@@ -30,11 +30,12 @@ class RakitSenjata:
         elif robot.state.rakit_state == "IDLE":
             print("[SENJATA] Memulai sequence RAKIT...")
             robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
+            robot.rakit_transition_start = now
             self.transition_to("PERSIAPAN", now, robot, gerak)
 
         elif robot.state.rakit_state == "PERSIAPAN":
             gerak.maju(robot)
-            if (now - robot.state.rakit_start_time > 0.8):
+            if (now - robot.state.rakit_transition_start > 0.8):
                 self.transition_to("PUTAR1", now, robot, gerak)
                 gerak.target_angle = target_angle                
 

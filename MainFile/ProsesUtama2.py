@@ -230,6 +230,13 @@ def main():
         except:
             print("[FAILSAFE] Gagal mengirim data stop (kabel mungkin terputus).")
             
+        # 3. Clean up GPIO pins
+        try:
+            tombol_jetson.cleanup()
+            print("[FAILSAFE] GPIO Cleanup selesai.")
+        except:
+            pass
+            
         print("Program selesai.")
         sys.exit(0)
 
