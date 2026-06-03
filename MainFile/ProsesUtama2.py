@@ -32,7 +32,7 @@ def main():
     telemetri.start()
     # ------------------------------
     
-    sensor = SensorReader(port='/dev/ttyUSB0', baudrate=115200) 
+    sensor = SensorReader(port='/dev/ttyACM1', baudrate=115200) 
     writer = ArduinoDueWriter(port='/dev/ttyACM0', baudrate=115200)
 
     arena = MappingArena()

@@ -45,10 +45,10 @@ class MonitorDasborApp(ctk.CTk):
         self.theme_switch.select() # Default Dark
         self.theme_switch.pack(side="left", padx=15)
         
-        # 2. Panel Input Token (Terkunci dengan default "IRIS")
+        # 2. Panel Input Token (Terkunci dengan default "NANOPA")
         ctk.CTkLabel(top_frame, text="Token Jetson:", font=("Arial", 12, "bold")).pack(side="left", padx=(10, 5))
         self.token_entry = ctk.CTkEntry(top_frame, width=100, justify="center")
-        self.token_entry.insert(0, "IRIS")
+        self.token_entry.insert(0, "NANOPA")
         self.token_entry.configure(state="disabled") # Kunci agar tidak diubah saat auto-search
         self.token_entry.pack(side="left", padx=5)
         
@@ -111,7 +111,7 @@ class MonitorDasborApp(ctk.CTk):
     # FUNGSI JARINGAN (SOCKET) & THREADING (AUTO RECONNECT)
     # ===============================================
     def cari_jetson_thread(self):
-        token_target = "IRIS" # Hardcode sesuai permintaan
+        token_target = "NANOPA" # Hardcode sesuai permintaan
         
         # Update UI ke mode pencarian
         self.after(0, lambda: self.lbl_status.configure(text=f"Mencari Robot ({token_target})...", text_color="#F1C40F"))

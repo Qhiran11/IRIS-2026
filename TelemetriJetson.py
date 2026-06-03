@@ -11,7 +11,7 @@ class TelemetryServer:
         self.port = port
         # Generate 4 Karakter Token secara acak (Huruf & Angka)
         # self.token = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        self.token = "IRIS"
+        self.token = "NANOPA"
         self.berjalan = False
         self.client_socket = None
         self.latest_data = None

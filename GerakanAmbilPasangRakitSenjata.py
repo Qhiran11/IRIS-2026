@@ -35,7 +35,7 @@ class RakitSenjata:
 
         elif robot.state.rakit_state == "PERSIAPAN":
             gerak.maju(robot)
-            if (now - robot.state.rakit_transition_start > 0.8):
+            if (now - robot.state.rakit_transition_start > 0.5):
                 self.transition_to("PUTAR1", now, robot, gerak)
                 gerak.target_angle = target_angle                
 
@@ -53,7 +53,7 @@ class RakitSenjata:
             if (jarak == -1): 
                 gerak.mundur(robot)
                 robot.state.rakit_transition_start = now            
-            elif jarak >= (target_jarak - 1) and jarak <= (target_jarak + 1): 
+            elif jarak < target_jarak + 8: 
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.2): 
                     print(f"[SENJATA] Tiba di posisi dekat ({target_jarak}cm).")
@@ -74,9 +74,12 @@ class RakitSenjata:
                     robot.motor.relay_tambahan1 = 1
                     robot.motor.relay_tambahan2 = 1
                     self.transition_to("MUNDUR_PELAN", now, robot, gerak)
+        
             else:
                 gerak.geser_ke_titik_kanan(robot, self.targetJarakKanan)
                 robot.state.rakit_transition_start = now
+            # if jarak_kanan <= 30:
+            #     gerak.stop(robot)
 
         elif robot.state.rakit_state == "MUNDUR_PELAN":
             # Pertahankan relay tambahan tetap bernilai 1 (HIGH)
@@ -86,7 +89,7 @@ class RakitSenjata:
             gerak.max_pwm = 25
             
             
-            if jarak <= target_jarak: # target 2 cm
+            if jarak <= target_jarak + 1: # target 2 cm
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.5):
                     print("[SENJATA] Tiba di posisi sangat dekat (2cm).")
@@ -98,13 +101,13 @@ class RakitSenjata:
         elif robot.state.rakit_state == "RELAY_MATI_1":
             robot.motor.relay_tambahan1 = 0
             # Jeda 1.5s sebelum pindah ke step matikan relay 2
-            if (now - robot.state.rakit_transition_start >= 1.5):
+            if (now - robot.state.rakit_transition_start >= 0.3):
                 robot.motor.relay_tambahan2 = 0
                 self.transition_to("RELAY_MATI_2", now, robot, gerak)
 
         elif robot.state.rakit_state == "RELAY_MATI_2":
             # Jeda 3s sebelum lanjut ke MAJU_30CM
-            if (now - robot.state.rakit_transition_start >= 2.0):
+            if (now - robot.state.rakit_transition_start >= 1.0):
                 self.transition_to("MAJU_30CM", now, robot, gerak)
 
         elif robot.state.rakit_state == "MAJU_30CM":
