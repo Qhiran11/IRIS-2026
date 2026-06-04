@@ -166,6 +166,7 @@ def main():
                         robot.state.reset_all()
                         gerak.stop(robot)
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
+                        robot.sensor.switch = 0
                         is_running = False # Kembalikan program ke fase Standby
                         continue # Langsung melompat kembali ke awal loop
                         
