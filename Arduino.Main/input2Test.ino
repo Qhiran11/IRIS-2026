@@ -73,8 +73,11 @@ int getRobustDistance(uint8_t idx, int newVal) {
 int16_t data_masuk[17] = {0}; 
 unsigned long lastS2 = 0, lastComm = 0;
 
-const int pinT[3] = {42, 38, 36};
-const int pinE[3] = {44, 46, 34};
+// const int pinT[3] = {42, 38, 36};
+// const int pinE[3] = {44, 46, 34};
+const int pinT[3] = {38, 42, 36};
+const int pinE[3] = {46, 44, 34};
+
 const long timeout[3] = {20000, 17000, 15000}; 
 
 const int ProxiBelakang = -1;
@@ -173,7 +176,9 @@ void loop() {
       delayMicroseconds(10);
       digitalWrite(pinT[i], LOW);
 
-      long duration = pulseIn(pinE[i], HIGH, timeout[i]); 
+      long duration = pulseIn(pinE[i], HIGH, timeout[i]);
+
+      // data_masuk[i + 2] = (duration == 0) ? -1 : (duration * 0.0343 / 2);
 
       if(i == 2){ // Sensor belakang tanpa filter
         data_masuk[i + 2] = (duration == 0) ? -1 : (duration * 0.0343 / 2);

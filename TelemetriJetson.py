@@ -95,7 +95,13 @@ class TelemetryServer:
                 "Zona 3 State": robot.state.zona3_state,
                 "KFS State": robot.state.kfs_state,
                 "Gerakan Dasar Aktif": robot.state.gerak_dasar_aktif,
-            }
+            },
+            "Koneksi Hardware": {
+                "Input Terhubung": robot.InputTerhubung,
+                "Output Terhubung": robot.OutputTerhubung,
+                "Robot Main State": robot.ROBOT_MAIN_STATE,
+            },
+            
         }
         with self.data_lock:
             self.latest_data = data

@@ -76,8 +76,15 @@ class RakitSenjata:
                     self.transition_to("MUNDUR_PELAN", now, robot, gerak)
         
             else:
-                gerak.geser_ke_titik_kanan(robot, self.targetJarakKanan)
-                robot.state.rakit_transition_start = now
+                # --- LOGIKA FILTER JARAK HANTU ---
+                # Jika target di atas 40 cm, dan sensor membaca angka 21 hingga 28, abaikan!
+                if self.targetJarakKanan > 40 and 21 <= jarak_kanan <= 28:
+                    pass # 'pass' berarti sistem tidak melakukan apa-apa dan langsung lanjut ke looping berikutnya
+                
+                # Jika angka sensor aman (bukan 21-28), jalankan gerakan normal
+                else:
+                    gerak.geser_ke_titik_kanan(robot, self.targetJarakKanan)
+                    robot.state.rakit_transition_start = now
             # if jarak_kanan <= 30:
             #     gerak.stop(robot)
 
@@ -101,7 +108,7 @@ class RakitSenjata:
         elif robot.state.rakit_state == "RELAY_MATI_1":
             robot.motor.relay_tambahan1 = 0
             # Jeda 1.5s sebelum pindah ke step matikan relay 2
-            if (now - robot.state.rakit_transition_start >= 0.3):
+            if (now - robot.state.rakit_transition_start >= 3):
                 robot.motor.relay_tambahan2 = 0
                 self.transition_to("RELAY_MATI_2", now, robot, gerak)
 

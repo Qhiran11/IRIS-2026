@@ -1,4 +1,6 @@
 from cv2 import REDUCE_AVG
+import random
+from PIL import Image
 import customtkinter as ctk
 import socket
 import json
@@ -56,6 +58,18 @@ class MonitorDasborApp(ctk.CTk):
         self.lbl_status = ctk.CTkLabel(top_frame, text="Status: MEMULAI PENCARIAN...", text_color="#F1C40F", font=("Arial", 12, "bold"))
         self.lbl_status.pack(side="left", padx=20)
 
+        # -----------------------------------------------------
+        # [BARU] 4. Indikator Hardware (Diratakan ke Kanan)
+        # -----------------------------------------------------
+        self.lbl_hw_out = ctk.CTkLabel(top_frame, text="⚙️ MOTOR: ?", text_color="gray", font=("Arial", 12, "bold"))
+        self.lbl_hw_out.pack(side="right", padx=10)
+
+        self.lbl_hw_in = ctk.CTkLabel(top_frame, text="📡 SENSOR: ?", text_color="gray", font=("Arial", 12, "bold"))
+        self.lbl_hw_in.pack(side="right", padx=10)
+        
+        # Penyekat visual (opsional)
+        ctk.CTkLabel(top_frame, text="|", text_color="gray").pack(side="right", padx=5)
+
         # ==========================================
         # MAIN PANEL: Tampilan Data Json (Dasbor)
         # ==========================================
@@ -76,7 +90,25 @@ class MonitorDasborApp(ctk.CTk):
         # Kanan Atas: Status Robot
         top_right = ctk.CTkFrame(right_frame)
         top_right.pack(side="top", fill="both", expand=True, pady=(0, 5))
-        ctk.CTkLabel(top_right, text="🤖 Status Utama Robot", font=("Arial", 20, "bold"), text_color="#F1C40F").pack(pady=5)
+        # Buat frame transparan khusus untuk menyusun Judul dan Badge secara horizontal
+        header_status_frame = ctk.CTkFrame(top_right, fg_color="transparent")
+        header_status_frame.pack(fill="x", pady=5)
+        
+        # Label Judul (di kiri)
+        ctk.CTkLabel(header_status_frame, text="🤖 Status Utama Robot", font=("Arial", 20, "bold"), text_color="#F1C40F").pack(side="left", padx=(10, 5))
+        
+        # Label Badge Status (di sebelahnya)
+        # fg_color digunakan untuk memberikan warna latar belakang (seperti tag/highlight)
+        self.lbl_robot_state = ctk.CTkLabel(
+            header_status_frame, 
+            text="UNKNOWN", 
+            font=("Arial", 14, "bold"), 
+            text_color="white",
+            corner_radius=8, # Membuat sudut latar belakang agak membulat
+            padx=10, 
+            pady=2
+        )
+        self.lbl_robot_state.pack(side="left", padx=5)
         self.box_status = ctk.CTkTextbox(top_right, font=("Courier", 20), state="disabled")
         self.box_status.pack(fill="both", expand=True, padx=10, pady=10)
         
@@ -87,6 +119,63 @@ class MonitorDasborApp(ctk.CTk):
         self.box_motor = ctk.CTkTextbox(bot_right, font=("Courier", 14), state="disabled")
         self.box_motor.pack(fill="both", expand=True, padx=10, pady=10)
 
+    
+    def tampilkan_splash_screen(self):
+        """Membuat overlay gambar full screen selama beberapa detik"""
+        try:
+            # Gunakan r"..." (raw string) agar backslash (\) Windows tidak terbaca sebagai error
+            path_gambar = r"C:\Users\YOGA\Documents\IRIS 2026\NANOPA\Program_Utama_KRAI\python\NANOPA_ne9yzd.webp"
+            
+            # Load gambar menggunakan Pillow
+            pil_img = Image.open(path_gambar)
+            
+            # Konversi ke CTkImage dan atur ukurannya (misal 600x400, sesuaikan dengan aspek rasio gambar Anda)
+            ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(600, 400))
+            
+            # 1. Buat Frame hitam yang menutupi SELURUH jendela aplikasi
+            # relwidth=1, relheight=1 artinya 100% lebar dan 100% tinggi jendela
+            self.splash_frame = ctk.CTkFrame(self, fg_color="black")
+            self.splash_frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+            
+            # 2. Masukkan gambar ke tengah frame tersebut
+            lbl_gambar = ctk.CTkLabel(self.splash_frame, text="", image=ctk_img)
+            lbl_gambar.place(relx=0.5, rely=0.5, anchor="center")
+            
+            # 3. Hapus frame ini otomatis setelah 2000 milidetik (2 detik)
+            self.after(1000, self.splash_frame.destroy)
+            
+        except Exception as e:
+            print(f"[UI] Gambar transisi gagal dimuat: {e}")
+            # Jika gambar tidak ditemukan, biarkan saja agar tidak membuat aplikasi crash
+    
+    
+    def tampilkan_glitch(self):
+        """Memunculkan gambar glitch sekilas lalu menghilang (Overlay transparan)"""
+        try:
+            path_gambar = r"C:\Users\YOGA\Documents\IRIS 2026\NANOPA\Program_Utama_KRAI\python\programmer.png"
+            pil_img = Image.open(path_gambar)
+            
+            # CustomTkinter otomatis membaca alpha channel (transparansi) dari file PNG
+            ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(800, 800))
+            
+            # Langsung buat Label dan tempel di main window (self), jangan pakai Frame tambahan
+            self.lbl_glitch = ctk.CTkLabel(
+                self, 
+                text="", 
+                image=ctk_img, 
+                fg_color="transparent" # KUNCI: Membuat background kotak gambarnya hilang
+            )
+            
+            # Letakkan tepat di tengah layar
+            self.lbl_glitch.place(relx=0.5, rely=0.5, anchor="center")
+            
+            # Hancurkan label gambar ini setelah 150 milidetik
+            self.after(150, self.lbl_glitch.destroy)
+            
+        except Exception as e:
+            pass # Abaikan jika gambar gagal diload agar loop tidak error
+
+    
     # ===============================================
     # FUNGSI INTERAKSI UI
     # ===============================================
@@ -133,7 +222,15 @@ class MonitorDasborApp(ctk.CTk):
                         self.after(0, self.connect_tcp, addr[0], int(port))
                         return # Keluar dari loop pencarian UDP
             except socket.timeout:
+                # --- [BARU] LOGIKA GLITCH ACAK ---
+                # Menggunakan random.random() untuk mendapatkan angka antara 0.0 - 1.0
+                # Angka < 0.3 berarti ada kemungkinan 30% glitch muncul setiap kali timeout (tiap 2 detik)
+                if random.random() < 0.8:
+                    self.after(0, self.tampilkan_glitch)
+                # ---------------------------------
+                
                 continue # Abaikan timeout, teruskan pencarian
+            
             except Exception:
                 time.sleep(1) # Mencegah CPU overload jika terjadi galat sistem
                 
@@ -141,6 +238,8 @@ class MonitorDasborApp(ctk.CTk):
             try: self.udp_sock.close()
             except: pass
 
+    
+    
     def connect_tcp(self, ip, port):
         self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -150,6 +249,7 @@ class MonitorDasborApp(ctk.CTk):
             # Update UI
             self.lbl_status.configure(text=f"Status: TERHUBUNG ({ip})", text_color="#2ECC71")
             
+            self.tampilkan_splash_screen()
             # Mulai Thread Penerima Data JSON
             threading.Thread(target=self.terima_data_thread, daemon=True).start()
             
@@ -182,17 +282,53 @@ class MonitorDasborApp(ctk.CTk):
             self.after(0, self.disconnect_and_reconnect)
 
     def update_dashboard(self, data):
+        # 1. AMBIL SEMUA DATA DARI JSON TERLEBIH DAHULU (Taruh paling atas)
         status_data = data.get("Status Robot", {})
+        hw_data = data.get("Koneksi Hardware", {})
+
+        # =========================================================
+        # 2. LOGIKA UPDATE BADGE STATUS UTAMA (DI SEBELAH JUDUL)
+        # =========================================================
+        robot_state = status_data.get("Main State", "UNKNOWN")
+        val_upper = str(robot_state).upper()
         
-        # 1. Update kotak Sensor dan Motor menggunakan fungsi default
+        # Set tulisan hanya nilainya saja (contoh: "STANDBY")
+        self.lbl_robot_state.configure(text=val_upper)
+        
+        # Warnai latar belakang kotak (fg_color) berdasarkan statusnya
+        if val_upper == "STANDBY":
+            self.lbl_robot_state.configure(fg_color="#3498DB", text_color="white") # Biru
+        elif val_upper == "START":
+            self.lbl_robot_state.configure(fg_color="#F1C40F", text_color="black") # Kuning 
+        elif val_upper == "FINISHED":
+            self.lbl_robot_state.configure(fg_color="#3498DB", text_color="white") # Biru
+        else:
+            self.lbl_robot_state.configure(fg_color="#7F8C8D", text_color="white") # Abu-abu 
+
+        # =========================================================
+        # 3. UPDATE INDIKATOR SENSOR & MOTOR (DI TOP BAR KANAN)
+        # =========================================================
+        if hw_data.get("Input Terhubung", False):
+            self.lbl_hw_in.configure(text="📡 SENSOR: OK", text_color="#2ECC71") # Hijau
+        else:
+            self.lbl_hw_in.configure(text="📡 SENSOR: ERROR", text_color="#E74C3C") # Merah
+            
+        if hw_data.get("Output Terhubung", False):
+            self.lbl_hw_out.configure(text="⚙️ MOTOR: OK", text_color="#2ECC71") # Hijau
+        else:   
+            self.lbl_hw_out.configure(text="⚙️ MOTOR: ERROR", text_color="#E74C3C") # Merah
+        
+        # =========================================================
+        # 4. UPDATE TEXTBOX (KOTAK DATA) BAWAAN
+        # =========================================================
         self.update_ui_text(self.box_sensor, data.get("Sensor", {}))
         self.update_ui_text(self.box_motor, data.get("Motor", {}))
         
-        # 2. Update kotak Status secara custom agar bisa mewarnai KATA TERTENTU saja
+        # Update kotak Status secara custom agar bisa mewarnai tulisan
         self.box_status.configure(state="normal")
         self.box_status.delete("0.0", "end")
         
-        # Konfigurasi tag warna stabilo
+        # Konfigurasi tag warna stabilo untuk textbox
         self.box_status.tag_config("merah", background="#E74C3C", foreground="white")
         self.box_status.tag_config("kuning", background="#F1C40F", foreground="black")
         
@@ -200,28 +336,22 @@ class MonitorDasborApp(ctk.CTk):
             self.box_status.insert("end", "Menunggu data...\n")
         else:
             for key, value in status_data.items():
-                # Ketik label kiri terlebih dahulu
                 teks_kiri = f"{key: <25}: "
                 self.box_status.insert("end", teks_kiri)
                 
-                # Catat posisi (index) pointer tepat sebelum nilai status diketik
                 idx_mulai = self.box_status.index("end-1c")
                 
-                # Ketik nilai statusnya (misal: "READY", "STOP")
                 val_str = str(value)
                 self.box_status.insert("end", val_str)
                 
-                # Catat posisi (index) pointer tepat setelah nilai status diketik
                 idx_selesai = self.box_status.index("end-1c")
                 
-                # Terapkan highlight HANYA pada rentang kata tersebut
-                val_upper = val_str.upper()
-                if val_upper in ["READY", "IDLE"]:
+                val_teks_upper = val_str.upper()
+                if val_teks_upper in ["READY", "IDLE"]:
                     self.box_status.tag_add("merah", idx_mulai, idx_selesai)
-                elif val_upper == "FINISHED":
+                elif val_teks_upper == "FINISHED":
                     self.box_status.tag_add("kuning", idx_mulai, idx_selesai)
                     
-                # Tambahkan baris baru (enter)
                 self.box_status.insert("end", "\n")
                 
         self.box_status.configure(state="disabled")

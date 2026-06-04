@@ -75,8 +75,6 @@ class SensorData:
         self.tombol_start = 1
         self.tombol_reset = 1
 
-        self.posisi_x = 0.0
-        self.posisi_y = 0.0
         
         # Data Cadangan
         self.kompas2 = 0
@@ -117,8 +115,8 @@ class SensorData:
             self.kompas = sudut_relatif
             self.jarak_depan   = arr[1]
     
-            self.ultrasonic_kiri    = arr[3]
-            self.ultrasonic_kanan = arr[2]
+            self.ultrasonic_kiri    = arr[2]
+            self.ultrasonic_kanan = arr[3]
             self.ultrasonic_belakang = arr[4]
 
             self.proxi_belakang      = arr[5]   
@@ -193,4 +191,9 @@ class Robot:
         self.jumlah_kfs = 0
         self.zona_aktif = 1  # State awal robot
         self.state = SystemState() # [BARU] Menambahkan State Manager terpusat
+        self.InputTerhubung = False
+        self.OutputTerhubung = False
+
+        self.ROBOT_MAIN_STATE = "STANDBY"
+        
         

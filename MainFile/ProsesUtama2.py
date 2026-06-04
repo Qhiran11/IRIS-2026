@@ -21,6 +21,42 @@ from InputKamera import KameraSensor
 from InputKameraQR import DeteksiQR
 from InputTombol import TombolKontrol
 
+
+def hard_restart_sistem(sensor, writer, kamera, tombol_jetson, gerak, robot):
+    print("\n[SYSTEM] MELAKUKAN HARD RESTART! Menginisialisasi ulang seluruh program...")
+    
+    # 1. Pastikan robot berhenti sebelum mati
+    try:
+        gerak.stop(robot)
+        writer.kirim_data(robot.motor.get_array_output())
+        time.sleep(0.1)
+    except:
+        pass
+
+    # 2. Lepaskan semua resource hardware (SANGAT KRUSIAL)
+    try:
+        print("[RESTART] Menutup Serial Port...")
+        # Pastikan class SensorReader dan ArduinoDueWriter Anda memiliki method .close()
+        # Jika belum ada, Anda harus menambahkannya di file Input.py dan Output.py
+        sensor.close() 
+        writer.close() 
+        
+        print("[RESTART] Mematikan Kamera...")
+        kamera.stop()
+        
+        print("[RESTART] Membersihkan GPIO...")
+        tombol_jetson.cleanup()
+    except Exception as e:
+        print(f"[RESTART] Peringatan saat menutup hardware: {e}")
+        
+    print("[RESTART] Memulai ulang script dalam 1 detik...")
+    time.sleep(1)
+    
+    # 3. Eksekusi ulang program
+    python = sys.executable
+    os.execv(python, ['python'] + sys.argv)
+
+
 def main():
     print("Memulai Program Utama KRAI...")
     # ... (print logo Anda) ...
@@ -32,8 +68,29 @@ def main():
     telemetri.start()
     # ------------------------------
     
-    sensor = SensorReader(port='/dev/ttyACM1', baudrate=115200) 
-    writer = ArduinoDueWriter(port='/dev/ttyACM0', baudrate=115200)
+    port_sensor = '/dev/ttyUSB0'   # Arduino Mega
+    port_writer = '/dev/ttyACM0'   # Arduino Due
+
+    # --- MONITORING SENSOR (INPUT) ---
+    if os.path.exists(port_sensor):
+        sensor = SensorReader(port=port_sensor, baudrate=115200)
+        robot.InputTerhubung = True
+        print("[INFO] Kabel Sensor terhubung di", port_sensor)
+    else:
+        sensor = None
+        robot.InputTerhubung = False
+        print("[WARNING] Kabel Sensor TIDAK terhubung!")
+
+    # --- MONITORING WRITER (OUTPUT) ---
+    if os.path.exists(port_writer):
+        writer = ArduinoDueWriter(port=port_writer, baudrate=115200)
+        robot.OutputTerhubung = True  # Tambahkan atribut ini di class Robot jika belum ada
+        print("[INFO] Kabel Writer terhubung di", port_writer)
+    else:
+        writer = None
+        robot.OutputTerhubung = False
+        print("[WARNING] Kabel Writer TIDAK terhubung!")
+    
 
     arena = MappingArena()
     hutan = MappingHutan()
@@ -81,7 +138,7 @@ def main():
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
-                    # gerak.target_angle = -40
+                    # gerak.target_angle = 90
                     gerak.stop(robot) #    <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar) 
@@ -91,8 +148,10 @@ def main():
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
                         robot.state.reset_all() # Reset semua state ke kondisi awal
+                        robot.ROBOT_MAIN_STATE = "START"
                         robot.jumlah_kfs = 0    # Reset counter fisik
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
+                        robot.sensor.switch = 0
                         
                         is_running = True       # Ubah mode menjadi Running
                         time.sleep(0.01)
@@ -102,6 +161,7 @@ def main():
 
 
                     if robot.sensor.tombol_reset == 0:
+                        # hard_restart_sistem(sensor, writer, kamera, tombol_jetson, gerak, robot)
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
                         robot.state.reset_all()
                         gerak.stop(robot)
