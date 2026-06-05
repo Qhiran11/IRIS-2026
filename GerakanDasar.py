@@ -61,8 +61,6 @@ class GerakanDasar:
         robot.state.gerak_dasar_aktif = "STOP"
         self._apply_motor(robot, 0, 0, 0, 0)
         
-        robot.motor.mDorong1 = robot.motor.mDorong2 = 0
-        
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
         self.pid_jarak.reset()

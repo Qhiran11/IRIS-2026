@@ -1,3 +1,4 @@
+#include <avr/wdt.h> // [WAJIB] Library untuk fitur Auto-Reset
 #include <Wire.h>
 #include <VL53L1X.h>
 VL53L1X sensor2;
@@ -112,6 +113,8 @@ void updateCompassData() {
 void setup() {
   Serial.begin(115200);
   Serial2.begin(115200);
+  // [WAJIB] Matikan Watchdog saat booting agar tidak boot-loop
+  wdt_disable();
   Wire.begin();
   Wire.setClock(400000); 
 
@@ -136,6 +139,19 @@ void setup() {
 
 void loop() {
   unsigned long currentMillis = millis();
+
+  // =======================================================
+  // [SISTEM ANTI-FREEZE] DETEKSI TRIGGER DARI JETSON NANO
+  // =======================================================
+  if (Serial.available() > 0) {
+    char cmd = Serial.read();
+    if (cmd == 'R') {
+      wdt_enable(WDTO_15MS); // Aktifkan timer kematian 15ms
+      while (1) {}           // Jebak program selamanya agar memicu Hardware Reset
+    }
+  }
+
+
   // Membaca data binary mentah dari ESP32 (Harus tersedia 2 byte)
   while (Serial2.available() >= 2) {
     uint8_t byte_rendah = Serial2.read(); // LSB dibaca pertama

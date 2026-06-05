@@ -84,9 +84,8 @@ class SensorData:
         self.kfs_terdeteksi = 0
 
         self.sensor_kfs_depan = 0
-
-
         self.posisi_di_hutan = 0
+        
 
     def update_dari_array(self, arr):
         """
@@ -195,5 +194,6 @@ class Robot:
         self.OutputTerhubung = False
 
         self.ROBOT_MAIN_STATE = "STANDBY"
+        self.targetJarakKanan = 50
         
         

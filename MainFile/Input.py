@@ -8,16 +8,35 @@ class SensorReader:
         self.port = port
         self.baudrate = baudrate
         self.ser = None
+        self.last_data_time = time.time() # Tracker waktu anti-freeze
         self.connect()
 
     def connect(self):
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
             print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}")
+            self.last_data_time = time.time() # Reset tracker saat koneksi awal
             return True
         except Exception as e:
             print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")
             return False
+
+    def trigger_reset_mega(self):
+        """Mengirim byte trigger ke Mega untuk melakukan self-reset"""
+        if self.ser and self.ser.is_open:
+            print("[WARNING] Koneksi MEGA Freeze! Mengirim sinyal AUTO-RESET...")
+            try:
+                self.ser.write(b'R') # Kirim karakter 'R' sebagai trigger
+                self.ser.flush()
+                
+                # Beri waktu 2 detik untuk Arduino Mega melakukan booting ulang
+                time.sleep(2.0) 
+                
+                self.ser.reset_input_buffer()
+                self.last_data_time = time.time() # Reset waktu agar tidak spam reset
+                print("[INPUT] Sinyal reset terkirim, melanjutkan pembacaan...")
+            except Exception as e:
+                print(f"[ERROR] Gagal mengirim sinyal reset: {e}")
 
     def baca_data(self):
         """
@@ -27,25 +46,24 @@ class SensorReader:
         if not self.ser or not self.ser.is_open:
             return None 
 
+        # Cek apakah terjadi Freeze (Tidak ada data valid selama lebih dari 1.5 detik)
+        if time.time() - self.last_data_time > 1.5:
+            self.trigger_reset_mega()
+            return None
+
         try:
-            # Perhitungan panjang paket baru:
-            # [2 Header] + [34 Data (17 * 2)] + [1 CRC] + [2 Footer] = 39 byte
             while self.ser.in_waiting >= 39:
-                
                 # 1. Sinkronisasi Header 1 (0xAA)
                 if self.ser.read(1) == b'\xAA':
-                    
                     # 2. Sinkronisasi Header 2 (0x55)
                     if self.ser.read(1) == b'\x55':
-                        
                         # 3. Baca sisa paket (37 byte)
-                        # Terdiri dari: 34 byte data + 1 byte CRC + 2 byte Footer
                         packet = self.ser.read(37)
                         
                         if len(packet) == 37:
-                            data_payload = packet[:34]   # 34 byte data murni (17 int16)
-                            received_crc = packet[34]    # Byte ke-35 (indeks 34)
-                            footer = packet[35:37]       # 2 byte terakhir
+                            data_payload = packet[:34]
+                            received_crc = packet[34]
+                            footer = packet[35:37]
                             
                             # 4. Validasi Footer
                             if footer == b'\x0D\x0A':
@@ -58,16 +76,13 @@ class SensorReader:
                                 # 6. Validasi CRC
                                 if calc_crc == received_crc:
                                     
-                                    # 7. Ekstrak 34 byte data menjadi 17 integer
-                                    # '<17h' = Little Endian, 17 buah short integer (16-bit)
-                                    decoded_data = struct.unpack('<17h', data_payload)
+                                    # UPDATE WAKTU TRACKER: Data sukses terbaca, berarti Mega tidak freeze!
+                                    self.last_data_time = time.time() 
                                     
+                                    # 7. Ekstrak data
+                                    decoded_data = struct.unpack('<17h', data_payload)
                                     return list(decoded_data)
-                                else:
-                                    # print("CRC Error!")
-                                    pass
-        except Exception as e:
-            # print(f"Error pembacaan: {e}")
+        except Exception:
             pass
             
         return None

@@ -62,7 +62,7 @@ def main():
     # ... (print logo Anda) ...
 
     robot = Robot()
-
+ 
     # --- INISIALISASI TELEMETRI ---
     telemetri = TelemetryServer()
     telemetri.start()
@@ -139,6 +139,8 @@ def main():
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
                     # gerak.target_angle = 90
+                    robot.motor.relay_tambahan1 = 0
+                    robot.motor.relay_tambahan2 = 0
                     gerak.stop(robot) #    <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar) 
@@ -148,13 +150,14 @@ def main():
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
                         robot.state.reset_all() # Reset semua state ke kondisi awal
+                        robot.state.rakit_state = "IDLE"
                         robot.ROBOT_MAIN_STATE = "START"
                         robot.jumlah_kfs = 0    # Reset counter fisik
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
                         robot.sensor.switch = 0
+                        gerak.target_angle = 0
                         
                         is_running = True       # Ubah mode menjadi Running
-                        time.sleep(0.01)
                         continue # Skip semua logika di bawah, kembali ke awal while
 
                 else:
@@ -163,10 +166,13 @@ def main():
                     if robot.sensor.tombol_reset == 0:
                         # hard_restart_sistem(sensor, writer, kamera, tombol_jetson, gerak, robot)
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
+                        robot.ROBOT_MAIN_STATE = "STANDBY"
                         robot.state.reset_all()
                         gerak.stop(robot)
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         robot.sensor.switch = 0
+                        gerak.target_angle = 0
+                        robot.sensor.update_dari_array(array_input) # Update memori robot
                         is_running = False # Kembalikan program ke fase Standby
                         continue # Langsung melompat kembali ke awal loop
                         

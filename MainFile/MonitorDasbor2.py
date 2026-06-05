@@ -304,7 +304,7 @@ class MonitorDasborApp(QMainWindow):
         hw_data = data.get("Koneksi Hardware", {})
 
         # 1. Update Badge
-        robot_state = status_data.get("Robot Main State", "UNKNOWN")
+        robot_state = hw_data.get("Robot Main State", "UNKNOWN")
         val_upper = str(robot_state).upper()
         self.lbl_robot_state.setText(val_upper)
         
@@ -361,7 +361,7 @@ class MonitorDasborApp(QMainWindow):
             key_padded = f"{key}".ljust(25).replace(" ", "&nbsp;")
             html_content += f"{key_padded}: {val_formatted}<br>"
             
-        self.box_status.setHtml(f"<pre style='font-family: Courier; font-size: 16px;'>{html_content}</pre>")
+        self.box_status.setHtml(f"<pre style='font-family: Courier; font-size: 23px;'>{html_content}</pre>")
 
     # ===============================================
     # FUNGSI JARINGAN (SOCKET & THREADING)
