@@ -247,7 +247,7 @@ class MonitorDasborApp(QMainWindow):
     def ui_show_splash(self):
         self.lbl_splash.raise_() # Paksa ke depan
         self.lbl_splash.show()
-        QTimer.singleShot(1000, self.lbl_splash.hide) # Hilang dlm 1 detik
+        QTimer.singleShot(3000, self.lbl_splash.hide) # Hilang dlm 1 detik
         
     def ui_show_glitch(self, jumlah_kedipan=None):
         """Memunculkan efek glitch secara acak (1 atau 2 kali kedipan)"""

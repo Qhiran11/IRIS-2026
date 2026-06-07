@@ -13,11 +13,42 @@ class RakitSenjata:
         robot.state.rakit_state = "TRANSISI"
         robot.state.rakit_next_state = target_state
         robot.state.rakit_transition_start = now
+
+    def target_tombak(self, robot, jarak_kanan, gerak, now):
+        if jarak_kanan >= (robot.targetJarakKanan - 1) and jarak_kanan <= (robot.targetJarakKanan + 1):
+            if robot.sensor.cekTombak == 1:
+                gerak.stop(robot)
+                robot.motor.relay_tambahan2 = 1
+                if (now - robot.state.rakit_transition_start > 0.2):
+                    robot.motor.relay_tambahan1 = 1
+                if (now - robot.state.rakit_transition_start > 0.8):
+                    print(f"[SENJATA] Posisi lateral pas ({robot.targetJarakKanan}cm). Mengaktifkan relay tambahan...")
+                    return True
+            else:
+                if not hasattr(robot.state, 'last_search_time'):
+                    robot.state.last_search_time = 0
+                
+                if (now - robot.state.last_search_time > 0.1): # Jeda 1 detik sebelum geser lagi
+                    print("[SENJATA] Cek tombak tidak terdeteksi, menggeser target +20cm")
+                    robot.targetJarakKanan += 20
+                    robot.state.last_search_time = now
+        else:
+            # --- LOGIKA FILTER JARAK HANTU ---
+            # Jika target di atas 40 cm, dan sensor membaca angka 21 hingga 28, abaikan!
+            if robot.targetJarakKanan > 40 and 21 <= jarak_kanan <= 28:
+                pass # 'pass' berarti sistem tidak melakukan apa-apa dan langsung lanjut ke looping berikutnya
+            else:
+                gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan)
+                robot.state.rakit_transition_start = now
+        
+
+        return False
+
    
     def jalankan(self, robot, gerak, target_angle, target_jarak):
         now = time.time()
-        jarak_belakang       = robot.sensor.ultrasonic_belakang
-        jarak_kanan = robot.sensor.ultrasonic_kanan
+        jarak_belakang  = robot.sensor.ultrasonic_belakang
+        jarak_kanan     = robot.sensor.ultrasonic_kanan
 
         # ---------------------------------------------------------
         # STATE MACHINE MENGGUNAKAN IF-ELIF
@@ -68,28 +99,8 @@ class RakitSenjata:
         elif robot.state.rakit_state == "GESER_KESAMPING":
             gerak.base_speed = 35 # Kecepatan pelan
             gerak.max_pwm = 45
-            
-            if jarak_kanan >= (robot.targetJarakKanan - 1) and jarak_kanan <= (robot.targetJarakKanan + 1):
-                gerak.stop(robot)
-                robot.motor.relay_tambahan2 = 1
-                if (now - robot.state.rakit_transition_start > 0.2):
-                    robot.motor.relay_tambahan1 = 1
-                if (now - robot.state.rakit_transition_start > 0.8):
-                    print(f"[SENJATA] Posisi lateral pas ({robot.targetJarakKanan}cm). Mengaktifkan relay tambahan...")
-                    self.transition_to("MUNDUR_PELAN", now, robot, gerak)
-        
-            else:
-                # --- LOGIKA FILTER JARAK HANTU ---
-                # Jika target di atas 40 cm, dan sensor membaca angka 21 hingga 28, abaikan!
-                if robot.targetJarakKanan > 40 and 21 <= jarak_kanan <= 28:
-                    pass # 'pass' berarti sistem tidak melakukan apa-apa dan langsung lanjut ke looping berikutnya
-                
-                # Jika angka sensor aman (bukan 21-28), jalankan gerakan normal
-                else:
-                    gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan)
-                    robot.state.rakit_transition_start = now
-            # if jarak_kanan <= 30:
-            #     gerak.stop(robot)
+            if self.target_tombak(robot,jarak_kanan,gerak,now):
+                self.transition_to("MUNDUR_PELAN", now, robot, gerak)
 
         elif robot.state.rakit_state == "MUNDUR_PELAN":
             gerak.base_speed = 20 # Jauh lebih pelan
@@ -121,7 +132,6 @@ class RakitSenjata:
             gerak.base_speed = 120
             gerak.max_pwm = 255
             
-            
             if jarak_belakang >= 51 and jarak_belakang <= 53: # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.1):
@@ -129,10 +139,16 @@ class RakitSenjata:
                     gerak.target_angle = -90
                     self.transition_to("PUTAR_NEG_90", now, robot, gerak)
             elif (jarak_belakang == -1):
-                gerak.maju(robot)
+                if robot.targetJarakKanan <= 35:
+                    gerak.maju_diagonal_kiri(robot)
+                else:
+                    gerak.maju(robot)
                 robot.state.rakit_transition_start = now
             else:
-                gerak.mundur_ke_titik(robot, 52)
+                if robot.targetJarakKanan <= 35:
+                    gerak.maju_diagonal_kiri(robot)
+                else:
+                    gerak.mundur_ke_titik(robot, 52)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":

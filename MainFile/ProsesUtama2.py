@@ -139,24 +139,19 @@ def main():
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
                     # gerak.target_angle = 90
-                    robot.motor.relay_tambahan1 = 0
-                    robot.motor.relay_tambahan2 = 0
                     gerak.stop(robot) #    <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
-                    writer.kirim_data(data_keluar) 
+                    writer.kirim_data(data_keluar)
 
                     
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
                         robot.state.reset_all() # Reset semua state ke kondisi awal
-                        robot.state.rakit_state = "IDLE"
                         robot.ROBOT_MAIN_STATE = "START"
-                        robot.jumlah_kfs = 0    # Reset counter fisik
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
-                        
                         is_running = True       # Ubah mode menjadi Running
                         continue # Skip semua logika di bawah, kembali ke awal while
 
@@ -164,7 +159,7 @@ def main():
 
 
                     if robot.sensor.tombol_reset == 0:
-                        # hard_restart_sistem(sensor, writer, kamera, tombol_jetson, gerak, robot)
+                        robot.motor.relay_tambahan1 = 1 # Capit jepit kfs terbuka
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
                         robot.ROBOT_MAIN_STATE = "STANDBY"
                         robot.state.reset_all()
@@ -184,7 +179,8 @@ def main():
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
-                        selesai = rakit.jalankan(robot, gerak, 90, 2)
+                        # selesai = rakit.jalankan(robot, gerak, 90, 2)
+                        selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
                         if selesai:
                             robot.state.main_state = "GOGO1"
                             robot.state.main_then = now

@@ -40,6 +40,8 @@ class SystemState:
         self.kfs_state = "IDLE"
         self.kfs_start_time = now # Ubah dari 0.0
         self.kfs_then = now # Ubah dari 0.0
+        self.kfs_transition_start = now
+        self.kfs_next_state = ""
         self.kfs_is_done = False
 
 
@@ -78,8 +80,8 @@ class SensorData:
         
         # Data Cadangan
         self.kompas2 = 0
-
         self.kompas3 = 0
+        self.cekTombak = 0
 
         self.kfs_terdeteksi = 0
 
@@ -194,6 +196,6 @@ class Robot:
         self.OutputTerhubung = False
 
         self.ROBOT_MAIN_STATE = "STANDBY"
-        self.targetJarakKanan = 50
+        self.targetJarakKanan = 10 # JARAK AWAL DI KANAN
         
         
