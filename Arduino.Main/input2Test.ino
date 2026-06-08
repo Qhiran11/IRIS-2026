@@ -81,10 +81,8 @@ const int pinE[3] = {46, 44, 34};
 
 const long timeout[3] = {20000, 17000, 15000}; 
 
-const int ProxiBelakang = -1;
-const int ProxiDepan = 28;
-const int limitcapit [4] = {30, 32, 31, 33};
-const int ProxiKfsCapit [5] = {-1, A1, 45, 43, 41};
+const int proxiTombak = 32;
+
 const int tombol_start = 40;
 const int tombol_reset = 54;
 unsigned long lastUltra = 0;
@@ -118,13 +116,13 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000); 
 
-  pinMode(ProxiBelakang, INPUT_PULLUP);
-  pinMode(ProxiDepan, INPUT_PULLUP);
   pinMode(tombol_start, INPUT_PULLUP);
   pinMode(tombol_reset, INPUT_PULLUP);
+
+  pinMode(proxiTombak, INPUT);
   
-  for (int i = 0; i < 4; i++) pinMode(limitcapit[i], INPUT_PULLUP);
-  for (int i = 0; i < 5; i++) pinMode(ProxiKfsCapit[i], INPUT_PULLUP);
+  
+  
 
   tcaselect(6);
   sensor2.init();
@@ -152,35 +150,12 @@ void loop() {
   }
 
 
-  // Membaca data binary mentah dari ESP32 (Harus tersedia 2 byte)
-  while (Serial2.available() >= 2) {
-    uint8_t byte_rendah = Serial2.read(); // LSB dibaca pertama
-    uint8_t byte_tinggi = Serial2.read(); // MSB dibaca kedua
-    
-    // Menggabungkan kembali 2 byte menjadi 1 variabel int16_t
-    sudut_x_dari_esp32 = (byte_tinggi << 8) | byte_rendah; 
-  }
-
-  // Jika buffer menumpuk tak wajar (mencegah out-of-sync ganjil)
-  if (Serial2.available() > 10) { 
-    while(Serial2.available()) Serial2.read(); // Kuras buffer (flush)
-  }
-
-
+  data_masuk[7] = digitalRead(proxiTombak); // kiri
   // Memasukkan data digital ke index 12-16
-  data_masuk[16] = digitalRead(tombol_reset); // kiri
-  data_masuk[15] = digitalRead(tombol_start); // kanan
-  data_masuk[14] = digitalRead(ProxiKfsCapit[2]); // dpn 
-  data_masuk[13] = digitalRead(ProxiKfsCapit[1]); // rata kanan
-  data_masuk[12] = digitalRead(ProxiKfsCapit[0]); // rata kiri
+  data_masuk[6] = digitalRead(tombol_reset); // kiri
+  data_masuk[5] = digitalRead(tombol_start); // kanan
 
-  // Memasukkan data digital ke index 5-10
-  data_masuk[10] = digitalRead(ProxiDepan);
-  data_masuk[9] = digitalRead(limitcapit[3]);
-  data_masuk[8] = digitalRead(limitcapit[2]);
-  data_masuk[7] = digitalRead(limitcapit[1]);
-  data_masuk[6]  = sudut_x_dari_esp32;
-  data_masuk[5] = digitalRead(ProxiBelakang);
+  
 
   // 1. Baca Ultrasonik (Setiap 40ms agar pantulan suara hilang dulu)
   if (currentMillis - lastUltra >= 40) {

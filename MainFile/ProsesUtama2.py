@@ -122,23 +122,20 @@ def main():
     is_running = False # Flag penanda apakah robot sedang standby atau running
 
     try:
-        # kamera.start() # Mulai sensor kamera di background
-        # time.sleep(5)
-        
         while True:
-            # ==============================================================
-            # 1. BACA SENSOR & TELEMETRI (SELALU JALAN DI LATAR)
-            # ==============================================================
             array_input = sensor.baca_data()
             telemetri.kirim_data(robot)
             now = time.time()
-
-            # Pastikan data ada (tidak None/kabel tidak putus)
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
-                    # gerak.target_angle = 90
+                    # gerak.target_angle = -180
+                    # gerak.hadap_sudut(robot)
+                    # gerak.kanan(robot) #    <==================TESTING
+                    # gerak.kiri(robot) #    <==================TESTING
+                    # gerak.maju(robot) #    <==================TESTING
+                    # gerak.mundur(robot) #    <==================TESTING
                     gerak.stop(robot) #    <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
@@ -152,6 +149,8 @@ def main():
                         # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
+                        robot.motor.relay_tambahan2 = 0
+                        robot.motor.relay_tambahan1 = 0
                         is_running = True       # Ubah mode menjadi Running
                         continue # Skip semua logika di bawah, kembali ke awal while
 
@@ -164,6 +163,8 @@ def main():
                         robot.ROBOT_MAIN_STATE = "STANDBY"
                         robot.state.reset_all()
                         gerak.stop(robot)
+                        robot.motor.relay_tambahan2 = 0
+                        robot.motor.relay_tambahan1 = 0
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
@@ -179,16 +180,17 @@ def main():
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
-                        # selesai = rakit.jalankan(robot, gerak, 90, 2)
-                        selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
+                        selesai = rakit.jalankan(robot, gerak)
+                        # selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
                         if selesai:
-                            robot.state.main_state = "GOGO1"
+                            robot.state.main_state = "GOGO"
                             robot.state.main_then = now
                             
-                    elif robot.state.main_state == "GOGO":
+                    elif robot.state.main_state == "GOGO1":
                         selesai = masukMainhua._proses_ke_tengah(robot, gerak)
                         if selesai:
                             robot.state.main_state = "CEK_RUTE"
+                            gerak.stop(robot)
                             robot.state.main_then = now
 
                     elif robot.state.main_state == "AMBILKFS":

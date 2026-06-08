@@ -71,44 +71,4 @@ class GerakanCapitKFS:
     # ==========================================
     # 4. KONTROL PUTAR (2 PCA)
     # ==========================================
-    def putar_capit_kebelakang(self, robot):
-        """
-        Target Posisi: "depan", "tengah", "belakang"
-        Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
-        """
-        if (robot.sensor.limit_kiri_capit == 0):robot.motor.capit_putar_kiri = 0
-        else:robot.motor.capit_putar_kiri = 180
-
-        if (robot.sensor.limit_kanan_capit == 0):robot.motor.capit_putar_kanan = 0
-        else:robot.motor.capit_putar_kanan = -180
-
-        if ((robot.sensor.limit_kiri_capit == 0) and (robot.sensor.limit_kanan_capit == 0)): return True
-
-        
-        return False # Masih dalam proses berputar
-
-    def putar_capit_kedepan(self, robot):
-        """
-        Target Posisi: "depan", "tengah", "belakang"
-        Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
-        """
-        # putar belakang
-        robot.motor.capit_putar_kiri = -180
-        robot.motor.capit_putar_kanan = 180
-
-        
-        return False # Masih dalam proses berputar
-
-    def capit_stop(self, robot):
-        """
-        Target Posisi: "depan", "tengah", "belakang"
-        Mengembalikan True jika rotasi selesai, False jika sedang berjalan.
-        """
-        # putar belakang
-        robot.motor.capit_putar_kiri = 0
-        robot.motor.capit_putar_kanan = 0
-
-        
-        return False # Masih dalam proses berputar
-
     

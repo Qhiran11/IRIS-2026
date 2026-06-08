@@ -38,11 +38,11 @@ class GerakanAmbilKFS:
         elif robot.state.kfs_state == "READY":
             robot.motor.relay_tambahan1 = 1 # Capit jepit kfs terbuka
             robot.motor.relay_tambahan2 = 0 # Capit kfs naik
-            self.transition_to("BUANG", now, robot, gerak)
+            self.transition_to("AMBIL", now, robot, gerak)
         
         elif robot.state.kfs_state == "AMBIL":
             elapsed_time = now - robot.state.kfs_transition_start
-            if elapsed_time > 3.0: 
+            if elapsed_time > 2.0: 
                 robot.motor.relay_tambahan2 = 0
                 # self.transition_to("FINISHED", now, robot, gerak)
                 return True     

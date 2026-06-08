@@ -39,7 +39,7 @@ class GerakanNaikTurun:
             
         elif robot.state.naikturun_sub_state == "PASKAN":
             gerak.base_speed = gerak.max_pwm = 50
-            if gerak.geser_ke_tengah2(robot, 255): 
+            if gerak.geser_ke_tengah2(robot, 265): 
                 print("[NAIK-TURUN] Posisi Pas. Siap Naik.")
                 return True # Mengembalikan True jika tugas selesai
 

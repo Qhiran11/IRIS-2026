@@ -54,7 +54,10 @@ class SensorData:
         self.ultrasonic_kiri = 0
         self.ultrasonic_kanan = 0
         self.ultrasonic_belakang = 0
-        
+
+        self.tombol_start = 1
+        self.tombol_reset = 1
+        self.cekTombak = 0
         # --- DATA SENSOR (30% Bilangan Bulat / Int) ---
         self.switch = 0
         self.proxi_belakang = 0
@@ -74,14 +77,13 @@ class SensorData:
         self.limit_capitBuka      = 1
         self.limit_capitJepit      = 1
 
-        self.tombol_start = 1
-        self.tombol_reset = 1
+        
 
         
         # Data Cadangan
         self.kompas2 = 0
         self.kompas3 = 0
-        self.cekTombak = 0
+        
 
         self.kfs_terdeteksi = 0
 
@@ -120,24 +122,24 @@ class SensorData:
             self.ultrasonic_kanan = arr[3]
             self.ultrasonic_belakang = arr[4]
 
-            self.proxi_belakang      = arr[5]   
-            
-            self.limit_kanan_capit   = arr[6]
-            self.limit_kiri_capit   = arr[7]
-            
-            self.limit_capitBuka      = arr[8]
-            self.limit_capitJepit      = arr[9]
+            self.tombol_start = arr[5]
+            self.tombol_reset = arr[6]
+            self.cekTombak   = arr[7]
 
-            self.proxi_depan      = arr[10]
+
+            self.proxi_belakang      = arr[8]   
+            self.limit_kanan_capit   = arr[9]
+            self.limit_capitBuka      = arr[10]
+            self.limit_capitJepit      = arr[11]
+            self.proxi_depan      = arr[12]
             
-            self.kompas2      = arr[11]
+            self.kompas2      = arr[13]
             
             self.kompas3      = arr[12]
             self.kfs_terdeteksi = arr[13]
 
             self.sensor_kfs_depan = arr[14]
-            self.tombol_start = arr[15]
-            self.tombol_reset = arr[16]
+            
 
 
 
@@ -196,6 +198,7 @@ class Robot:
         self.OutputTerhubung = False
 
         self.ROBOT_MAIN_STATE = "STANDBY"
-        self.targetJarakKanan = 10 # JARAK AWAL DI KANAN
+        self.targetJarakKanan = 11 # JARAK AWAL DI KANAN
+        self.targetJarakBelakang = 15
         
         

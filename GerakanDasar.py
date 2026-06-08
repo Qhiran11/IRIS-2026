@@ -27,14 +27,15 @@ class PIDController:
 
 class GerakanDasar:
     def __init__(self):
-        self.pid_kompas = PIDController(Kp=8.0, Ki=0.001, Kd=15.0)
+        self.pid_kompas = PIDController(Kp=5.0, Ki=0.001, Kd=5.0)
         self.pid_kompas2 = PIDController(Kp=10.0, Ki=0.001, Kd=10.0)
-        self.pid_jarak = PIDController(Kp=8.0, Ki=0.000, Kd=10.0) 
+        self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=6.0) 
         
         self.delay = NonBlockingDelay()
         self.base_speed = 85 
         self.max_pwm = 120   
         self.target_angle = 0
+        self.waktu_patokan = 0
 
     def _apply_motor(self, robot, FL, FR, BL, BR):
         """
@@ -175,7 +176,7 @@ class GerakanDasar:
             
         return False
         
-    def mundur_ke_titik(self, robot, target_jarak):
+    def mundur_ke_titik(self, robot, target_jarak, now):
         robot.state.gerak_dasar_aktif = "MUNDUR KE TITIK"
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         jarak_sekarang = robot.sensor.ultrasonic_belakang
@@ -185,8 +186,19 @@ class GerakanDasar:
         self._apply_motor(robot, 
                           -speed_jarak + kor_sudut, -speed_jarak + kor_sudut, 
                           -speed_jarak - kor_sudut, -speed_jarak - kor_sudut)
-
-    def geser_ke_titik_kanan(self, robot, target_jarak):
+        
+        if target_jarak - 1 < jarak_sekarang < target_jarak + 1:
+            self.stop(robot)
+            if getattr(self, 'waktu_patokan', None) is None:
+                self.waktu_patokan = now
+            if now - self.waktu_patokan > 0.1:
+                self.waktu_patokan = None  
+                return True
+        else:
+            self.waktu_patokan = None
+        return False    
+    
+    def geser_ke_titik_kanan(self, robot, target_jarak, now):
         robot.state.gerak_dasar_aktif = "geser ke titik kanan"
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         jarak_sekarang = robot.sensor.ultrasonic_kanan
@@ -201,6 +213,16 @@ class GerakanDasar:
         self._apply_motor(robot, 
                           -speed_geser + kor_sudut,  speed_geser + kor_sudut, 
                            speed_geser - kor_sudut, -speed_geser - kor_sudut)
+        if target_jarak - 1 < jarak_sekarang < target_jarak + 1:
+            self.stop(robot)
+            if getattr(self, 'waktu_patokan', None) is None:
+                self.waktu_patokan = now
+            if now - self.waktu_patokan > 0.05:
+                self.waktu_patokan = None  
+                return True
+        else:
+            self.waktu_patokan = None
+        return False
 
     def hadap_sudut(self, robot):
         """Berputar di tempat untuk mengunci sudut tertentu menggunakan PID"""
@@ -265,7 +287,7 @@ class GerakanDasar:
     
     def geser_ke_tengah2(self, robot, target_kanan):
         robot.state.gerak_dasar_aktif = "geser ke tengah2"
-        jarak = robot.sensor.ultrasonic_kanan
+        jarak = robot.sensor.ultrasonic_kiri
 
         if jarak > target_kanan+2:
             self.kanan(robot)
