@@ -23,20 +23,23 @@ class MotorControllerApp(ctk.CTk):
         # State Data
         self.motor_names = [
             "M0 (Driver Kanan)", "M1 (Driver Kiri)", 
-            "M2 (DC Kanan Depan)", "M3 (DC Kiri Depan)", "M4 (DC Kanan Bkng)", "M5 (DC Kiri Bkng)",
-            "M6 (Relay PW Kanan / mDorong1)", "M7 (Relay PW Kiri / mDorong2)",
+            "M2 (DC Kanan Depan)", "M3 (DC Kiri Depan)", 
+            "M4 (DC Kanan Bkng)", "M5 (DC Kiri Bkng)",
+            "M6 (Relay PW Kanan)", "M7 (Relay PW Kiri)",
             "M8 (pwLogic)",
-            "M9 (Relay Tambahan 1)", "M10 (Relay Tambahan 2)"
+            "M9 (Relay Tambahan 1)", "M10 (Relay Tambahan 2)",
+            "M11 (Capit 1)", "M12 (Capit 2)",
+            "M13 (Unused)", "M14 (Unused)"
         ]
-        self.motor_limits = [255, 255, 255, 255, 255, 255, 255, 255, 1, 1, 1]
-        self.motor_speeds = [0] * 11
+
+        self.motor_limits = [255,255,255,255,255,255,255,255,1,1,1,1,1,255,255]
+        self.motor_speeds = [0] * 15
         self.entry_vars = []
         
         # Perlindungan Variabel Antar-Thread (Protects motor_speeds array)
         self.data_lock = threading.Lock()
         
         # Kinematics Variables (Mecanum Vectored Control)
-        # Tiga sumbu utama: Maju-Mundur, Kiri-Kanan, Rotasi.
         self.v_x = 0  
         self.v_y = 0  
         self.omega = 0 
@@ -52,7 +55,7 @@ class MotorControllerApp(ctk.CTk):
         self.rx_thread = threading.Thread(target=self.serial_rx_loop, daemon=True)
         self.rx_thread.start()
         
-        # Loop Pengirim menggunakan Thread asli agar bebas hambatan GUI (Fix UI Jeda)
+        # Loop Pengirim menggunakan Thread asli agar bebas hambatan GUI
         self.temp_speeds = []
         self.last_sent_time = 0
         self.tx_thread = threading.Thread(target=self.serial_tx_loop, daemon=True)
@@ -133,11 +136,8 @@ class MotorControllerApp(ctk.CTk):
             lbl.pack(side="left")
             
             btn_dec = ctk.CTkButton(row, text="<", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [6, 7]:
-                btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, -1))
-                btn_dec.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
-            elif i in [8, 9, 10]:
-                btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
+            if i in [6, 7, 8, 9, 10]:
+                btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, -1 if i in [6,7] else 1))
                 btn_dec.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
                 btn_dec.configure(command=lambda m=i: self.step_motor(m, -1))
@@ -150,10 +150,7 @@ class MotorControllerApp(ctk.CTk):
             self.entry_vars.append(var)
             
             btn_inc = ctk.CTkButton(row, text=">", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [6, 7]:
-                btn_inc.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
-                btn_inc.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
-            elif i in [8, 9, 10]:
+            if i in [6, 7, 8, 9, 10]:
                 btn_inc.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_inc.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
@@ -230,24 +227,20 @@ class MotorControllerApp(ctk.CTk):
         btn_turn_r.bind("<ButtonPress-1>", lambda e: self.set_vector(True, vx=0, vy=0, w=1))
         btn_turn_r.bind("<ButtonRelease-1>", lambda e: self.set_vector(False, vx=0, vy=0, w=0))
 
-        # PCA dan Stepper dinonaktifkan (Komponen telah dilepas)
-        pass
-
-
     # ===============================================
     # FUNGSI INTERNAL UI & UPDATE KINEMATIKA
     # ===============================================
     def update_entry_text(self):
         for i in range(len(self.motor_names)):
             try:
-                # Refresh hanya jika kursor user TIDAK sedang berada di kotak tersebut (agar ketikan manual tidak keriset)
+                # Refresh hanya jika kursor user TIDAK sedang berada di kotak tersebut 
                 if self.focus_get() != self.entry_vars[i]._widget:
                     self.entry_vars[i].set(str(self.motor_speeds[i]))
             except:
                 self.entry_vars[i].set(str(self.motor_speeds[i]))
     
     def set_motor_val(self, i, val):
-        with self.data_lock: # Minta gembok memori 
+        with self.data_lock: 
             limit = self.motor_limits[i]
             self.motor_speeds[i] = max(-limit, min(limit, val))
         self.update_entry_text()
@@ -288,20 +281,17 @@ class MotorControllerApp(ctk.CTk):
             self.v_y = vy * sp
             self.omega = w * sp
         else:
-            # Jika user ngelepas D-PAD, kembalikan parameter ke Nol
             if vx == 0 and vy == 0 and w == 0:
                 pass 
             else:
                 self.v_x = 0; self.v_y = 0; self.omega = 0
 
-        # Mecanum Inverse Kinematics Formula (Menghitung porsi tiap roda)
         fl = self.v_x + self.v_y + self.omega
         fr = self.v_x - self.v_y - self.omega
         bl = self.v_x - self.v_y + self.omega
         br = self.v_x + self.v_y - self.omega
 
         with self.data_lock:
-            # Peta Asli M2:FR, M3:FL, M4:BR, M5:BL
             limit = 255
             self.motor_speeds[3] = max(-limit, min(limit, fl)) # Front L
             self.motor_speeds[2] = max(-limit, min(limit, fr)) # Front R
@@ -311,7 +301,6 @@ class MotorControllerApp(ctk.CTk):
         self.update_entry_text()
 
     def cmd_pw(self, pressed, dir_val):
-        # PW sekarang menggunakan relay dikontrol oleh mDorong1 dan mDorong2 (indeks 6 dan 7)
         s = dir_val
         self.set_motor_val(6, s if pressed else 0)
         self.set_motor_val(7, s if pressed else 0)
@@ -326,7 +315,6 @@ class MotorControllerApp(ctk.CTk):
             # Auto-Reconnect Mechanism
             if self.ser is None or not self.ser.is_open:
                 if self.btn_connect.cget("text") == "DISCONNECT": 
-                    # Paksa rubah status UI jadi DISCONNECTED otomatis lewat Tkinter (after memanggil fungsi)
                     self.after(0, self.toggle_connection)
             
             if self.ser and self.ser.is_open:
@@ -335,54 +323,61 @@ class MotorControllerApp(ctk.CTk):
                         self.motor_speeds[8] = 0 # pwLogic (indeks 8)
                         speeds_snapshot = self.motor_speeds.copy()
                         
-                    # Kirim ke Robot JIKA nilai motor dirubah ATAU jika sudah lewat 0.05s (Keep Alive)
                     if self.temp_speeds != speeds_snapshot or (current_time - self.last_sent_time > 0.05):
                         self.temp_speeds = speeds_snapshot
                         
-                        # UBAH: Konversi 11 angka (int16) menjadi 22 byte (Little Endian '<11h')
-                        data_22b = struct.pack('<11h', *speeds_snapshot)
+                        data_30b = struct.pack('<15h', *speeds_snapshot)
                         
                         calc_crc = 0
-                        for b in data_22b:
+                        for b in data_30b:
                             calc_crc ^= b
                             
-                        # Rakit payload: Header (2) + Data (22) + Checksum (1) + End (2)
-                        payload = struct.pack('<BB', 0xAA, 0x55) + data_22b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
+                        payload = struct.pack('<BB', 0xAA, 0x55) + data_30b + struct.pack('<BBB', calc_crc, 0x0D, 0x0A)
                         self.ser.write(payload)
                         self.last_sent_time = current_time
                         
                 except Exception as e:
-                    # Delay dan auto-reconnect akan ambil alih
                     pass
                     
-            time.sleep(0.04) # Bebaskan main UI thread, biarkan CPU bernafas murni    # ===============================================
+            time.sleep(0.04)
     
-    
+    # ===============================================
     # SERIAL RX (RECEIVER / TELEMETRY) - THREAD
     # ===============================================
     def serial_rx_loop(self):
         while self.running:
             if self.ser and self.ser.is_open:
                 try:
-                    # Baca antrean serial
                     if self.ser.in_waiting >= 7:
                         b1 = self.ser.read()
-                        if b1 == b'\xBB':  # Header 1 Telemetry (Dari Arduino)
+
+                        if b1 == b'\xBB':  # Header 1
                             b2 = self.ser.read()
-                            if b2 == b'\x66': # Header 2
-                                payload = self.ser.read(5) 
+
+                            if b2 == b'\x66':  # Header 2
+                                payload = self.ser.read(5)
+
+                                # Validasi minimal (tanpa CRC)
                                 if len(payload) == 5 and payload[3] == 0x0D and payload[4] == 0x0A:
-                                    bh, bl, crc = payload[0], payload[1], payload[2]
-                                    # Hitung Checksum
-                                    if (bh ^ bl) == crc:
-                                        batt_mV = (bh << 8) | bl  # Restorasi tegangan utuh
-                                        batt_V = batt_mV / 100.0
-                                        # Hantam ke UI
-                                        self.lbl_batt.configure(text=f"Robot Batt: {batt_V:.2f} V", text_color="#2ECC71")
+
+                                    bh = payload[0]
+                                    bl = payload[1]
+
+                                    # ❗ TIDAK cek CRC karena Arduino salah
+                                    batt_mV = (bh << 8) | bl
+                                    batt_V = batt_mV / 100.0
+
+                                    self.lbl_batt.configure(
+                                        text=f"Robot Batt: {batt_V:.2f} V",
+                                        text_color="#2ECC71"
+                                    )
+
                 except Exception:
                     pass
-            time.sleep(0.01)
 
+            time.sleep(0.01)
+    
+    
     def show_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -415,18 +410,14 @@ class MotorControllerApp(ctk.CTk):
                         self.set_vector(pr, *vmap[btn])
             elif t == "pw":
                 self.cmd_pw(c.get("p", False), c.get("d", 0))
-            elif t == "pca1":
-                self.cmd_pca(c.get("p", False), c.get("d", 0))
-            elif t == "pca2":
-                self.cmd_pca_2(c.get("p", False), c.get("d", 0))
-            elif t == "pca3":
-                self.cmd_pca_3(c.get("p", False), c.get("d", 0))
-            elif t == "stp":
-                self.cmd_stepper(c.get("p", False), c.get("d", 0))
+            
+            # PERBAIKAN BUG FATAL: Cegah error saat HP mengirim perintah lama (PCA / Stepper)
+            elif t in ["pca1", "pca2", "pca3", "stp"]:
+                pass # Diabaikan dengan aman karena komponen hardware sudah dilepas
+                
             elif t == "trn":
                 self.set_vector(c.get("p", False), 0, 0, c.get("d", 0))
             elif t == "ind":
-                # Pengatur Nilai Individual Motor
                 m = c.get("m", 0)
                 val = c.get("v", 0)
                 if c.get("p", False):
@@ -441,7 +432,6 @@ class MotorControllerApp(ctk.CTk):
     def start_server(self):
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # Dengarkan semua IP masuk pada port 8888
         self.server_sock.bind(("0.0.0.0", 8888))
         self.server_sock.listen(1)
         
@@ -450,7 +440,6 @@ class MotorControllerApp(ctk.CTk):
                 self.server_sock.settimeout(1.0)
                 conn, addr = self.server_sock.accept()
                 
-                # HP Terhubung
                 try:
                     self.btn_link.configure(text=f"LINK: {addr[0]}", fg_color="#27AE60")
                 except: pass
@@ -464,12 +453,11 @@ class MotorControllerApp(ctk.CTk):
                         buffer += data
                         while "\n" in buffer:
                             line, buffer = buffer.split("\n", 1)
-                            # Jalankan GUI update handler dari antrean tk.after agar aman dari thread crash
                             self.after(0, self.handle_phone_command, line)
                     except socket.timeout:
-                        continue # socket timeout gapakai, kita muter terus 
+                        continue 
                     except Exception as e:
-                        break # Koneksi putus
+                        break 
                         
                 conn.close()
                 try:
@@ -484,14 +472,12 @@ class MotorControllerApp(ctk.CTk):
         self.running = False
         time.sleep(0.1)
         if self.ser and self.ser.is_open:
-            # Kirim sinyal Ngerem Semua satu kali terakhir ke Arduino sebelum mati
-            # UBAH: Kirim array berisi 11 angka nol, di-pack dengan format '<11h'
-            data_22b = struct.pack('<11h', *([0]*11))
+            data_30b = struct.pack('<15h', *([0]*15))
             crc = 0
-            for b in data_22b: 
+            for b in data_30b: 
                 crc ^= b
                 
-            payload = struct.pack('<BB', 0xAA, 0x55) + data_22b + struct.pack('<BBB', crc, 0x0D, 0x0A)
+            payload = struct.pack('<BB', 0xAA, 0x55) + data_30b + struct.pack('<BBB', crc, 0x0D, 0x0A)
             try: 
                 self.ser.write(payload)
             except: 
@@ -499,7 +485,6 @@ class MotorControllerApp(ctk.CTk):
             self.ser.close()
         self.destroy()
         sys.exit()
-
 
 if __name__ == "__main__":
     app = MotorControllerApp()

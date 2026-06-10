@@ -230,7 +230,6 @@ class MonitorDasborApp(QMainWindow):
 
             # [BARU] Kembalikan Top Frame ke Biru Gelap
             self.top_frame.setStyleSheet("background-color: #2C3E50; border-radius: 5px;")
-            
             # Kembalikan warna kotak data ke biru gelap
             style_kotak_gelap = "background-color: #2C3E50; color: white; border: none; padding: 10px;"
             self.box_sensor.setStyleSheet(style_kotak_gelap)

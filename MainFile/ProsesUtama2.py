@@ -130,41 +130,47 @@ def main():
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
                     # Pastikan motor benar-benar mati saat standby
-                    # gerak.target_angle = -180
-                    # gerak.hadap_sudut(robot)
+                    gerak.target_angle = 0
+                    # gerak.hadap_sudut(robot, now)
                     # gerak.kanan(robot) #    <==================TESTING
                     # gerak.kiri(robot) #    <==================TESTING
                     # gerak.maju(robot) #    <==================TESTING
                     # gerak.mundur(robot) #    <==================TESTING
-                    gerak.stop(robot) #    <==================TESTING
+                    # gerak.maju_roda_2(robot)
+                    # gerak.robot(robot)
+                    gerak.turun(robot)
+                    gerak.stop(robot) #                     <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
+                    # robot.motor.CapitTombakNaikTurun = 1
+                    # robot.motor.relayCapitKFSJepit = 0
+                    
+                    
 
                     
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
-                        robot.state.reset_all() # Reset semua state ke kondisi awal
                         robot.ROBOT_MAIN_STATE = "START"
-                        # hutan.reset()         # (Opsional) Panggil jika Anda punya fungsi reset rute
+                        if robot.state.main_state == "FASE2":
+                            robot.state.main_state = "GOGO"
+                        else:
+                            robot.state.reset_all() # Reset semua state ke kondisi awal
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
-                        robot.motor.relay_tambahan2 = 0
-                        robot.motor.relay_tambahan1 = 0
+                        robot.motor.CapitTombakNaikTurun = 0
+                        robot.motor.CapitTombakJepit = 0
                         is_running = True       # Ubah mode menjadi Running
                         continue # Skip semua logika di bawah, kembali ke awal while
 
                 else:
-
-
                     if robot.sensor.tombol_reset == 0:
-                        robot.motor.relay_tambahan1 = 1 # Capit jepit kfs terbuka
                         print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
                         robot.ROBOT_MAIN_STATE = "STANDBY"
                         robot.state.reset_all()
                         gerak.stop(robot)
-                        robot.motor.relay_tambahan2 = 0
-                        robot.motor.relay_tambahan1 = 0
+                        robot.motor.CapitTombakNaikTurun = 0
+                        robot.motor.CapitTombakJepit = 0
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
@@ -175,86 +181,92 @@ def main():
                     # --- LOGIKA STATE MACHINE UTAMA ---
                     if robot.state.main_state == "READY":
                         gerak.stop(robot)
-                        if (now - robot.state.main_then > 0.3):
+                        if (now - robot.state.main_then > 0.1):
                             robot.state.main_state = "GO"
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
-                        selesai = rakit.jalankan(robot, gerak)
-                        # selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
+                        selesai = rakit.jalankan(robot, gerak, now)
+                        # selesai = masukMainhua._proses_ke_tengah(robot, gerak, now)
                         if selesai:
-                            robot.state.main_state = "GOGO"
+                            robot.state.main_state = "FASE2"
                             robot.state.main_then = now
+                            is_running = False
                             
-                    elif robot.state.main_state == "GOGO1":
-                        selesai = masukMainhua._proses_ke_tengah(robot, gerak)
+                    elif robot.state.main_state == "GOGO":
+                        selesai = masukMainhua._proses_ke_tengah(robot, gerak, now)
                         if selesai:
-                            robot.state.main_state = "CEK_RUTE"
+                            robot.state.main_state = "NAIK"
                             gerak.stop(robot)
                             robot.state.main_then = now
 
                     elif robot.state.main_state == "AMBILKFS":
-                        selesai = ambil_kfs.jalankan_kombinasi_1(robot, gerak)
+                        selesai = ambil_kfs.AmbilKFS(robot, gerak, now)
                         if selesai:
-                            robot.jumlah_kfs += 1
-                            robot.state.main_state = "CEK_RUTE"
-                            
-                    # ==============================================================
-                    # SIKLUS NAVIGASI OTOMATIS
-                    # ==============================================================
-                    elif robot.state.main_state == "CEK_RUTE":
-                        move = hutan.get_next_move()
-                        
-                        if move is None:
-                            print("[NAVIGASI] Tiba di Zona 3!")
-                            robot.state.main_state = "ZONA3"
-                        else:
-                            aksi, sudut_hadap, petak_tujuan = move
-                            gerak.target_angle = sudut_hadap 
-                            
-                            print(f"[NAVIGASI] Menuju Petak {petak_tujuan}. Aksi: {aksi}. Hadap: {sudut_hadap}°")
-                            
-                            robot.state.main_then = now
-                            robot.state.main_state = "PUTAR_POSISI"
-                            robot.state.main_temp_state = aksi 
-                            
-                    elif robot.state.main_state == "PUTAR_POSISI":
-                        if (robot.sensor.kompas >= gerak.target_angle - 2 and robot.sensor.kompas <= gerak.target_angle + 2):
-                            gerak.stop(robot)
-                            if (now - robot.state.main_then > 0.1): 
-                                robot.state.main_state = robot.state.main_temp_state 
-                        else:
-                            gerak.base_speed = 60
-                            gerak.hadap_sudut(robot)
-                            robot.state.main_then = now
-                            
+                            if robot.totalNaik == 1:
+                                robot.state.main_state = "NAIK"
+                            else:
+                                robot.state.main_state = "PUTAR"
+                                gerak.stop(robot)
+                            # return
+        
                     elif robot.state.main_state == "NAIK":
                         selesai = masukMainhua._proses_naik(robot, gerak)
+                        
                         if selesai:
+                            robot.totalNaik += 1
                             print("[NAVIGASI] Naik Selesai.")
                             hutan.step_selesai() 
-                            robot.state.main_state = "CEK_RUTE" 
-                            
+                            robot.state.main_state = "AMBILKFS" 
+
+                    elif robot.state.main_state == "PUTAR":
+                        gerak.target_angle = -90
+                        selesai = gerak.hadap_sudut(robot, now)
+                        if selesai:
+                            robot.state.main_state = "TURUN"
+
                     elif robot.state.main_state == "TURUN":
                         selesai = masukMainhua._proses_turun(robot, gerak)
                         if selesai:
-                            print("[NAVIGASI] Turun Selesai.")
-                            hutan.step_selesai() 
-                            robot.state.main_state = "CEK_RUTE" 
-
-                    elif robot.state.main_state == "DATAR":
-                        print("[NAVIGASI] Rute Datar belum dibuat. Skip petak.")
-                        hutan.step_selesai()
-                        robot.state.main_state = "CEK_RUTE"
-
-                    # ==============================================================
-                    elif robot.state.main_state == "ZONA3":
-                        selesai = zona3.logic_zona3(robot, gerak)
+                            print("[NAVIGASI] Naik Selesai.")
+                            robot.state.main_state = "PUTAR1"
+                    elif robot.state.main_state == "PUTAR1":
+                        gerak.target_angle = 0
+                        selesai = gerak.hadap_sudut(robot, now)
                         if selesai:
-                            # Opsional: Kembali ke standby setelah tugas paling akhir selesai
-                            # is_running = False 
-                            pass # Biarkan atau lakukan aksi lain
+                            robot.state.main_state = "NAIK1"
+                    
+                    elif robot.state.main_state == "NAIK1":
+                        selesai = masukMainhua._proses_naik2(robot, gerak)
+                        if selesai:
+                            robot.state.main_state = "PUTAR2"
 
+                    elif robot.state.main_state == "PUTAR2":
+                        gerak.target_angle = -180
+                        selesai = gerak.hadap_sudut(robot, now)
+                        if selesai:
+                            robot.state.main_state = "TURUN1"
+
+                    elif robot.state.main_state == "TURUN1":
+                        selesai = masukMainhua._proses_turun(robot, gerak)
+                        if selesai:
+                            robot.state.main_state = "TURUN2" 
+
+                    elif robot.state.main_state == "TURUN2":
+                        selesai = masukMainhua._proses_turun(robot, gerak)
+                        if selesai:
+                            robot.state.main_state = "PUTAR3"
+
+                    elif robot.state.main_state == "PUTAR3":
+                        gerak.target_angle = 0
+                        selesai = gerak.hadap_sudut(robot, now)
+                        if selesai:
+                            robot.state.main_state = "ZONA3START"
+                    
+                    elif robot.state.main_state == "ZONA3START":
+                        selesai = zona3.logic_zona3(robot, gerak, now)
+                        if selesai:
+                            robot.state.main_state = "FINISHED"
                 
                 
                 # 4. EKSTRAK DAN KIRIM KE ARDUINO DUE (Hanya dieksekusi jika sedang is_running)

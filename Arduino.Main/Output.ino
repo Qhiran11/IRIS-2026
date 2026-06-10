@@ -1,36 +1,35 @@
 // // arduino_20_motor_v4_non_blocking.ino (IRIS 2026 KRAI Standard)
 // #include <Wire.h>
-// #include <Adafruit_PWMServoDriver.h>
 
 // int lajuawal = 0;
 
-// Adafruit_PWMServoDriver pca = Adafruit_PWMServoDriver(0x40);
-
-// // Pin M0-M5: 2 PW, 4 DC
+// // Pin M0-M5: 6 DC Motor Driver L298
 // const int PIN_ENB[]   = {30, 26, 24, 28, 32, 34};
 // const int PIN_PWM_R[] = {7,  11, 13,  9,  3,  5};
 // const int PIN_PWM_L[] = {6,  10, 12,  8,  2,  4};
 
-// // Pin Stepper
-// const int STP1_ENA = 37; const int STP1_DIR = 39; const int STP1_PULL = 41;
-// const int STP2_ENA = 43; const int STP2_DIR = 47; const int STP2_PULL = 49;
+// // Pin Relay PW (diubah sementara ke 0)
+// const int relayPin1 = 43; // kiri (Naik)
+// const int relayPin2 = 47; // kiri (Turun)
 
-// // --- STEPPER TIMING ---
-// unsigned long lastStepMicros1 = 0;
-// unsigned long lastStepMicros2 = 0;
-// const unsigned long stepInterval = 400; // Microseconds
-// bool pullState1 = false;
-// bool pullState2 = false;
+// const int relayPin3 = 39; // kanan (Naik)
+// const int relayPin4 = 37; // kanan (Turun)
 
-// // --- STATE TRACKER PCA & RAMPING ---
-// int lastPcaVal[5] = {0, 0, 0, 0, 0};
-// int pcaEnPins[5] = {22, 23, 27, 25, 31};
-// int pcaChRight[5] = {6, 12, 11, 14, 2};
-// int pcaChLeft[5]  = {7, 13, 10, 15, 3};
+// // Pin Relay Tambahan
+// const int relayTambahan1 = 40; 
+// const int relayTambahan2 = 42;
 
-// // UBAH: Ukuran array menjadi 20
-// int16_t targetSpeeds[20] = {0}; 
-// float currentSpeeds[20] = {0.0};
+// // Pin Relay Tambahan
+// const int relayCapit1 = 36; 
+// const int relayCapit2 = 38;
+
+
+
+// // Array Kecepatan (11 channels)
+// const word total = 15;
+// int16_t targetSpeeds[total] = {0}; 
+// // Hanya 6 motor driver yang menggunakan ramping
+// float currentSpeeds[6] = {0.0};
 // const float RAMP_TIME_MS = 200.0; 
 // const float MAX_SPEED_DELTA = 255.0; 
 // const float ACCEL_RATE = MAX_SPEED_DELTA / RAMP_TIME_MS; 
@@ -42,94 +41,58 @@
 // const int limit1 = 46;
 // const int limit2 = 45;
 
-// // UBAH: Perbesar ukuran rxBuffer minimal 45 (40 data byte + 1 checksum + 2 header + 2 end)
+// // Buffer serial: 11 data * 2 byte = 22 byte data payload
 // byte rxBuffer[50];
 // int rxIndex = 0;
 // enum SerialState { HEADER1, HEADER2, DATA, CHECKSUM, END1, END2 };
 // SerialState rxState = HEADER1;
 
-// // Variabel Stepper & Limit
-// long remainingSteps = 0;
-// bool readyToAccept = true; 
-// int arah_awal_0 = 0; // 1 (Kanan), -1 (Kiri), 0 (Berhenti)
+// // Variabel Limit State
+// int arah_awal_0 = 0; // 1 (Kanan/Turun), -1 (Kiri/Naik), 0 (Berhenti)
 // int arah_awal_1 = 0; 
 
 // void setup() {
 //   Serial.begin(115200);
 
+//   // Setup all 6 DC driver channels (M0-M5)
 //   for (int i = 0; i < 6; i++) {
-//     pinMode(PIN_ENB[i], OUTPUT); digitalWrite(PIN_ENB[i], HIGH);
-//     pinMode(PIN_PWM_R[i], OUTPUT); pinMode(PIN_PWM_L[i], OUTPUT);
+//     pinMode(PIN_ENB[i], OUTPUT); 
+//     digitalWrite(PIN_ENB[i], HIGH);
+//     pinMode(PIN_PWM_R[i], OUTPUT); 
+//     pinMode(PIN_PWM_L[i], OUTPUT);
 //   }
 
-//   pinMode(STP1_ENA, OUTPUT); digitalWrite(STP1_ENA, LOW); 
-//   pinMode(STP1_DIR, OUTPUT); pinMode(STP1_PULL, OUTPUT);
-//   pinMode(STP2_ENA, OUTPUT); digitalWrite(STP2_ENA, LOW); 
-//   pinMode(STP2_DIR, OUTPUT); pinMode(STP2_PULL, OUTPUT);
+//   // Setup Relay PW (hanya jika pin bukan 0)
+//   if (relayPin1 != 0) { pinMode(relayPin1, OUTPUT); digitalWrite(relayPin1, HIGH); }
+//   if (relayPin2 != 0) { pinMode(relayPin2, OUTPUT); digitalWrite(relayPin2, HIGH); }
+//   if (relayPin3 != 0) { pinMode(relayPin3, OUTPUT); digitalWrite(relayPin3, HIGH); }
+//   if (relayPin4 != 0) { pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, HIGH); }
 
+//   // Setup Relay Tambahan
+//   pinMode(relayTambahan1, OUTPUT); digitalWrite(relayTambahan1, HIGH);
+//   pinMode(relayTambahan2, OUTPUT); digitalWrite(relayTambahan2, HIGH);
+//   pinMode(relayCapit1, OUTPUT); digitalWrite(relayCapit1, HIGH);
+//   pinMode(relayCapit2, OUTPUT); digitalWrite(relayCapit2, HIGH);
+  
 //   pinMode(limit1, INPUT_PULLUP);
 //   pinMode(limit2, INPUT_PULLUP);
 
 //   Wire.begin();
-//   pca.begin();
-//   pca.setPWMFreq(2000);
-//   for(int i = 0; i < 5; i++){
-//     pinMode(pcaEnPins[i], OUTPUT); digitalWrite(pcaEnPins[i], HIGH);
-//   }
 // }
 
 // void loop() {
 //   processSerial();
 
 //   if (millis() - lastSerialTime > 300) {
-//     // UBAH: Loop reset batasnya menjadi 20
-//     for (int i = 0; i < 20; i++) targetSpeeds[i] = 0;
+//     for (int i = 0; i < total; i++) targetSpeeds[i] = 0;
 //   }
 
 //   applyRamping();
 //   updateMotors();
-//   updateSteppersNonBlocking();
   
 //   if (millis() - lastTelemetryTime >= 100) {
 //      sendTelemetry();
 //      lastTelemetryTime = millis();
-//   }
-// }
-
-// void updateSteppersNonBlocking() {
-//   unsigned long currentMicros = micros();
-//   // Catatan: Pastikan indeks ke-11 tetap yang ingin digunakan, atau sesuaikan jika mapping Python berubah
-//   int incomingData = targetSpeeds[11]; /// stepper
-
-//   if (incomingData != 0 && readyToAccept) {
-//     remainingSteps = incomingData; 
-//     readyToAccept = false; 
-//   } 
-//   else if (incomingData == 0) {
-//     readyToAccept = true;
-//   }
-
-//   if (remainingSteps != 0) {
-//     if (remainingSteps > 0) {
-//       digitalWrite(STP1_DIR, LOW);
-//       digitalWrite(STP2_DIR, HIGH);
-//     } else {
-//       digitalWrite(STP1_DIR, HIGH);
-//       digitalWrite(STP2_DIR, LOW);
-//     }
-
-//     if (currentMicros - lastStepMicros1 >= stepInterval) {
-//       lastStepMicros1 = currentMicros;
-//       pullState1 = !pullState1;
-      
-//       digitalWrite(STP1_PULL, pullState1);
-//       digitalWrite(STP2_PULL, pullState1); 
-
-//       if (pullState1 == LOW) {
-//         if (remainingSteps > 0) remainingSteps--;
-//         else remainingSteps++;
-//       }
-//     }
 //   }
 // }
 
@@ -140,20 +103,18 @@
 //       case HEADER1: if (b == 0xAA) rxState = HEADER2; break;
 //       case HEADER2: if (b == 0x55) rxState = DATA; rxIndex = 0; break;
       
-//       // UBAH: 20 data * 2 byte = 40 byte. Checksum ada di indeks ke-40
-//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= 40) rxState = CHECKSUM; break;
-//       case CHECKSUM: rxBuffer[40] = b; rxState = END1; break;
+//       // 11 data * 2 byte = 22 byte. Checksum ada di indeks ke-22
+//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= (total*2)) rxState = CHECKSUM; break;
+//       case CHECKSUM: rxBuffer[total*2] = b; rxState = END1; break;
       
 //       case END1: if (b == 0x0D) rxState = END2; else rxState = HEADER1; break;
 //       case END2:
 //         if (b == 0x0A) {
 //           byte calcXor = 0;
-//           // UBAH: Loop kalkulasi XOR sampai byte ke-40
-//           for (int i = 0; i < 40; i++) calcXor ^= rxBuffer[i];
+//           for (int i = 0; i < (total*2); i++) calcXor ^= rxBuffer[i];
           
-//           if (calcXor == rxBuffer[40]) {
-//              // UBAH: Konversi array memproses 20 data
-//              for(int i = 0; i < 20; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
+//           if (calcXor == rxBuffer[total*2]) {
+//              for(int i = 0; i < total; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
 //              lastSerialTime = millis();
 //           }
 //         }
@@ -167,8 +128,8 @@
 //   unsigned long dt = now - lastRampTime;
 //   if (dt > 0) {
 //      float maxChange = ACCEL_RATE * dt; 
-//      // UBAH: Ramping diterapkan ke 20 array kecepatan
-//      for(int i = 0; i < 20; i++) {
+//      // Ramping hanya untuk 6 motor driver pertama (indeks 0-5)
+//      for(int i = 0; i < 6; i++) {
 //          float diff = targetSpeeds[i] - currentSpeeds[i];
 //          if (abs(diff) <= maxChange) currentSpeeds[i] = targetSpeeds[i]; 
 //          else if (diff > 0) currentSpeeds[i] += maxChange; 
@@ -179,76 +140,117 @@
 // }
 
 // void updateMotors() {
-//   for (int i = 0; i < 6; i++) setL298(i, constrain((int)currentSpeeds[i], -255, 255));
-  
-//   for (int i = 0; i < 5; i++) {
-//     int rawSpeed = (int)currentSpeeds[i+6];
-//     int val = constrain((abs(rawSpeed) < 3 ? 0 : rawSpeed), -255, 255);
-//     int mappedVal = map(val, -255, 255, -4095, 4095);
+//   // 6 Driver-controlled DC motors (menggunakan ramping)
+//   for (int i = 0; i < 6; i++) {
+//     setL298(i, constrain((int)currentSpeeds[i], -255, 255));
+//   }
 
-//     if (mappedVal != lastPcaVal[i]) {
-//       if (mappedVal > 0) { pca.setPWM(pcaChLeft[i], 0, 0); pca.setPWM(pcaChRight[i], 0, mappedVal); }
-//       else if (mappedVal < 0) { pca.setPWM(pcaChRight[i], 0, 0); pca.setPWM(pcaChLeft[i], 0, -mappedVal); }
-//       else { pca.setPWM(pcaChRight[i], 0, 0); pca.setPWM(pcaChLeft[i], 0, 0); }
-//       lastPcaVal[i] = mappedVal;
-//     }
+//   // 2 Relay-controlled PW motors (mDorong1 dan mDorong2 pada index 6 dan 7)
+//   setRelayPW(targetSpeeds[6], targetSpeeds[7]);
+
+//   // Control tambahan relay 1 (pin 40)
+//   if (targetSpeeds[9] == 1) {
+//     digitalWrite(relayTambahan1, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayTambahan1, HIGH); // Inactive
+//   }
+
+//   // Control tambahan relay 2 (pin 42)
+//   if (targetSpeeds[10] == 1) {
+//     digitalWrite(relayTambahan2, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayTambahan2, HIGH); // Inactive
+//   }
+
+//     // Control tambahan relay 1 (pin 40)
+//   if (targetSpeeds[11] == 1) {
+//     digitalWrite(relayCapit1, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayCapit1, HIGH); // Inactive
+//   }
+
+//   // Control tambahan relay 2 (pin 42)
+//   if (targetSpeeds[12] == 1) {
+//     digitalWrite(relayCapit2, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayCapit2, HIGH); // Inactive
 //   }
 // }
 
 // void setL298(int index, int pwm) {
-//   if (index == 0) {
-//     if (targetSpeeds[12] == 1) {
-//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); }
-//     }   
-    
-//     else{
-//       if (digitalRead(limit1) == 0) { 
-//         if ((pwm > 0 && arah_awal_0 > 0) || (pwm < 0 && arah_awal_0 < 0) || pwm == 0) {
-//           analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
-//         } 
-//         else { 
-//           if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//           else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//         }
+//   if (index >= 0 && index < 6) {
+//     if (pwm > 0) { 
+//       analogWrite(PIN_PWM_R[index], pwm); 
+//       analogWrite(PIN_PWM_L[index], 0); 
+//     }
+//     else if (pwm < 0) { 
+//       analogWrite(PIN_PWM_R[index], 0); 
+//       analogWrite(PIN_PWM_L[index], -pwm); 
+//     }
+//     else { 
+//       analogWrite(PIN_PWM_R[index], 0); 
+//       analogWrite(PIN_PWM_L[index], 0); 
+//     }
+//   }
+// }
+
+// void setRelayPW(int speed1, int speed2) {
+//   // speed1: mDorong1 (PW Kanan), speed2: mDorong2 (PW Kiri)
+  
+//   // PW Kanan (Relay 3 & 4)
+//   int dir1 = 0; // 0: stop, -1: naik, 1: turun
+//   if (speed1 < 0) dir1 = -1;
+//   else if (speed1 > 0) dir1 = 1;
+
+//   if (targetSpeeds[8] == 0) { // pwLogic is 0, check limit1
+//     if (digitalRead(limit1) == 0) { // limit switch triggered (active low)
+//       if ((dir1 < 0 && arah_awal_0 < 0) || (dir1 > 0 && arah_awal_0 > 0) || dir1 == 0) {
+//         dir1 = 0;
 //       }
-//       else { 
-//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 1; }
-//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_0 = -1; }
-//         else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_0 = 0; }
-//       }
+//     } else {
+//       arah_awal_0 = dir1;
 //     }
 //   }
 
-//   else if (index == 1) {
-//     if (targetSpeeds[12] == 1) {
-//       if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//       else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//       else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); }
-//     }
-//     else{
-//       if (digitalRead(limit2) == 0) {
-//         if ((pwm > 0 && arah_awal_1 > 0) || (pwm < 0 && arah_awal_1 < 0) || pwm == 0) {
-//           analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); 
-//         } 
-//         else {
-//           if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//           else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//         }
-//       }
-//       else {
-//         if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 1; }
-//         else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); arah_awal_1 = -1; }
-//         else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); arah_awal_1 = 0; }
-//       }
+//   if (relayPin3 != 0 && relayPin4 != 0) {
+//     if (dir1 < 0) { // Naik
+//       digitalWrite(relayPin4, HIGH);
+//       digitalWrite(relayPin3, LOW);
+//     } else if (dir1 > 0) { // Turun
+//       digitalWrite(relayPin3, HIGH);
+//       digitalWrite(relayPin4, LOW);
+//     } else { // Stop
+//       digitalWrite(relayPin3, HIGH);
+//       digitalWrite(relayPin4, HIGH);
 //     }
 //   }
-    
-//   else {
-//     if (pwm > 0) { analogWrite(PIN_PWM_R[index], pwm); analogWrite(PIN_PWM_L[index], 0); }
-//     else if (pwm < 0) { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], -pwm); }
-//     else { analogWrite(PIN_PWM_R[index], 0); analogWrite(PIN_PWM_L[index], 0); }
+
+//   // PW Kiri (Relay 1 & 2)
+//   int dir2 = 0;
+//   if (speed2 < 0) dir2 = -1;
+//   else if (speed2 > 0) dir2 = 1;
+
+//   if (targetSpeeds[8] == 0) { // pwLogic is 0, check limit2
+//     if (digitalRead(limit2) == 0) { // limit switch triggered (active low)
+//       if ((dir2 < 0 && arah_awal_1 < 0) || (dir2 > 0 && arah_awal_1 > 0) || dir2 == 0) {
+//         dir2 = 0;
+//       }
+//     } else {
+//       arah_awal_1 = dir2;
+//     }
+//   }
+
+//   if (relayPin1 != 0 && relayPin2 != 0) {
+//     if (dir2 < 0) { // Naik
+//       digitalWrite(relayPin2, HIGH);
+//       digitalWrite(relayPin1, LOW);
+//     } else if (dir2 > 0) { // Turun
+//       digitalWrite(relayPin1, HIGH);
+//       digitalWrite(relayPin2, LOW);
+//     } else { // Stop
+//       digitalWrite(relayPin1, HIGH);
+//       digitalWrite(relayPin2, HIGH);
+//     }
 //   }
 // }
 

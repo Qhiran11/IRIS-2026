@@ -19,8 +19,15 @@
 // const int relayTambahan1 = 40; 
 // const int relayTambahan2 = 42;
 
+// // Pin Relay Tambahan
+// const int relayCapit1 = 36; 
+// const int relayCapit2 = 38;
+
+
+
 // // Array Kecepatan (11 channels)
-// int16_t targetSpeeds[11] = {0}; 
+// const word total = 15;
+// int16_t targetSpeeds[total] = {0}; 
 // // Hanya 6 motor driver yang menggunakan ramping
 // float currentSpeeds[6] = {0.0};
 // const float RAMP_TIME_MS = 200.0; 
@@ -35,7 +42,7 @@
 // const int limit2 = 45;
 
 // // Buffer serial: 11 data * 2 byte = 22 byte data payload
-// byte rxBuffer[30];
+// byte rxBuffer[50];
 // int rxIndex = 0;
 // enum SerialState { HEADER1, HEADER2, DATA, CHECKSUM, END1, END2 };
 // SerialState rxState = HEADER1;
@@ -64,7 +71,9 @@
 //   // Setup Relay Tambahan
 //   pinMode(relayTambahan1, OUTPUT); digitalWrite(relayTambahan1, HIGH);
 //   pinMode(relayTambahan2, OUTPUT); digitalWrite(relayTambahan2, HIGH);
-
+//   pinMode(relayCapit1, OUTPUT); digitalWrite(relayCapit1, HIGH);
+//   pinMode(relayCapit2, OUTPUT); digitalWrite(relayCapit2, HIGH);
+  
 //   pinMode(limit1, INPUT_PULLUP);
 //   pinMode(limit2, INPUT_PULLUP);
 
@@ -75,7 +84,7 @@
 //   processSerial();
 
 //   if (millis() - lastSerialTime > 300) {
-//     for (int i = 0; i < 11; i++) targetSpeeds[i] = 0;
+//     for (int i = 0; i < total; i++) targetSpeeds[i] = 0;
 //   }
 
 //   applyRamping();
@@ -95,17 +104,17 @@
 //       case HEADER2: if (b == 0x55) rxState = DATA; rxIndex = 0; break;
       
 //       // 11 data * 2 byte = 22 byte. Checksum ada di indeks ke-22
-//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= 22) rxState = CHECKSUM; break;
-//       case CHECKSUM: rxBuffer[22] = b; rxState = END1; break;
+//       case DATA: rxBuffer[rxIndex++] = b; if (rxIndex >= (total*2)) rxState = CHECKSUM; break;
+//       case CHECKSUM: rxBuffer[total*2] = b; rxState = END1; break;
       
 //       case END1: if (b == 0x0D) rxState = END2; else rxState = HEADER1; break;
 //       case END2:
 //         if (b == 0x0A) {
 //           byte calcXor = 0;
-//           for (int i = 0; i < 22; i++) calcXor ^= rxBuffer[i];
+//           for (int i = 0; i < (total*2); i++) calcXor ^= rxBuffer[i];
           
-//           if (calcXor == rxBuffer[22]) {
-//              for(int i = 0; i < 11; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
+//           if (calcXor == rxBuffer[total*2]) {
+//              for(int i = 0; i < total; i++) targetSpeeds[i] = rxBuffer[i*2] | (rxBuffer[(i*2)+1] << 8);
 //              lastSerialTime = millis();
 //           }
 //         }
@@ -151,6 +160,20 @@
 //     digitalWrite(relayTambahan2, LOW); // Active Low
 //   } else {
 //     digitalWrite(relayTambahan2, HIGH); // Inactive
+//   }
+
+//     // Control tambahan relay 1 (pin 40)
+//   if (targetSpeeds[11] == 1) {
+//     digitalWrite(relayCapit1, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayCapit1, HIGH); // Inactive
+//   }
+
+//   // Control tambahan relay 2 (pin 42)
+//   if (targetSpeeds[12] == 1) {
+//     digitalWrite(relayCapit2, LOW); // Active Low
+//   } else {
+//     digitalWrite(relayCapit2, HIGH); // Inactive
 //   }
 // }
 

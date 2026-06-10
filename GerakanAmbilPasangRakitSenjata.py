@@ -90,8 +90,7 @@ class RakitSenjata:
     
     
     
-    def jalankan(self, robot, gerak):
-        now = time.time()
+    def jalankan(self, robot, gerak, now):
         jarak_belakang  = robot.sensor.ultrasonic_belakang
         jarak_kanan     = robot.sensor.ultrasonic_kanan
         target_jarak = robot.targetJarakBelakang
@@ -119,7 +118,7 @@ class RakitSenjata:
                 gerak.target_angle = 90                
 
         elif robot.state.rakit_state == "PUTAR1":
-            gerak.hadap_sudut(robot)
+            gerak.hadap_sudut(robot, now)
             if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
                 if (now - robot.state.rakit_transition_start > 0.1): # Delay stabilisasi
                     print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
@@ -133,43 +132,30 @@ class RakitSenjata:
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
-            gerak.base_speed = 35 # Kecepatan pelan
-            gerak.max_pwm = 45
+            gerak.base_speed = 45 # Kecepatan pelan
+            gerak.max_pwm = 65
+            robot.motor.CapitTombakNaikTurun = 1
             if gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan, now):
-                self.transition_to("FINISHED", now, robot, gerak)
+                self.transition_to("MULAI_JEPIT", now, robot, gerak)
 
-        elif robot.state.rakit_state == "MUNDUR_PELAN":
-            gerak.base_speed = 40 # Jauh lebih pelan
-            gerak.max_pwm = 55
-            if robot.sensor.cekTombak == 0: # target 2 cm
-                gerak.stop(robot)
-                robot.motor.relay_tambahan2 = 1
-                if (now - robot.state.rakit_transition_start > 0.8):
-                    robot.motor.relay_tambahan1 = 1
-                if (now - robot.state.rakit_transition_start > 1.0):
-                    print("[SENJATA] Tiba di posisi sangat dekat (2cm).")
-                    self.transition_to("RELAY_MATI_1", now, robot, gerak)
-            else:
-                gerak.mundur_ke_titik(robot, target_jarak + 8)
-                robot.state.rakit_transition_start = now
+        elif robot.state.rakit_state == "MULAI_JEPIT":
+            gerak.base_speed = 15 # Jauh lebih pelan
+            gerak.max_pwm = 20
+            robot.motor.CapitTombakJepit = 1
+            if (now - robot.state.rakit_transition_start > 1.0 ):
+                gerak.mundur(robot)
+            if jarak_belakang < 3: # target 2 cm
+                gerak.stop(robot)                
+                self.transition_to("JEPIT", now, robot, gerak)
 
-        elif robot.state.rakit_state == "RELAY_MATI_1":
-            
-            # Jeda 1.5s sebelum pindah ke step matikan relay 2
-
-            if jarak_belakang < target_jarak + 1: # target 2 cm
-                robot.motor.relay_tambahan2 = 0
-                gerak.stop(robot)
-            else:
-                gerak.mundur_ke_titik(robot, target_jarak)
-                robot.state.rakit_transition_start = now
+        elif robot.state.rakit_state == "JEPIT":
             if (now - robot.state.rakit_transition_start > 1):
-                robot.motor.relay_tambahan1 = 0
+                robot.motor.CapitTombakJepit = 0
             if (now - robot.state.rakit_transition_start > 1.5):
+                robot.motor.CapitTombakNaikTurun = 0
                 self.transition_to("RELAY_MATI_2", now, robot, gerak)
 
         elif robot.state.rakit_state == "RELAY_MATI_2":
-            # Jeda 3s sebelum lanjut ke MAJU_30CM
             if (now - robot.state.rakit_transition_start >= 1.0):
                 self.transition_to("MAJU_30CM", now, robot, gerak)
 
@@ -193,7 +179,7 @@ class RakitSenjata:
         elif robot.state.rakit_state == "PUTAR_NEG_90":
             gerak.base_speed = 100
             gerak.max_pwm = 110
-            gerak.hadap_sudut(robot)
+            gerak.hadap_sudut(robot, now)
             if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
                 if (now - robot.state.rakit_transition_start > 0.2):
                     print("[SENJATA] Kembali menghadap -90 derajat.")
@@ -205,42 +191,21 @@ class RakitSenjata:
         
         elif robot.state.rakit_state == "BUKA_PEGANGAN":
             if (robot.sensor.data_qr ==  "Qr Ditemukan"):
-                robot.motor.relay_tambahan2 = 1
-                self.transition_to("FINISHED", now, robot, gerak)
+                robot.motor.CapitTombakJepit = 1
+                self.transition_to("DELAYBENTAR", now, robot, gerak)
                 gerak.target_angle = 0
             else:
                 pass
+            
         
-        elif robot.state.rakit_state == "PUTARKENOL":
-            gerak.base_speed = 80
-            gerak.max_pwm = 90
-            gerak.hadap_sudut(robot)
-            if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
-                # self.transition_to("BALIK_KE_POSISI", now, robot, gerak)
-                return True
-                # if (now - robot.state.rakit_transition_start > 0.1):
-                #     self.transition_to("BALIK_KE_POSISI", now, robot, gerak)
-            else:
-                robot.state.rakit_transition_start = now
-                pass
+        elif robot.state.rakit_state == "DELAYBENTAR":
+            gerak.stop(robot)
+            if (now - robot.state.rakit_transition_start > 2.0 ):
+                self.transition_to("BALIKKEPIT", now, robot, gerak)
         
-        elif robot.state.rakit_state == "BALIK_KE_POSISI1":
-            gerak.base_speed = 80
-            gerak.max_pwm = 100
-            gerak.mundur(robot)
-            if (jarak_belakang <= 40):
+        elif robot.state.rakit_state == "BALIKKEPIT":
+            if gerak.baliKePosisiAwal(robot):
                 self.transition_to("FINISHED", now, robot, gerak)
-            else:
-                pass
-
-        elif robot.state.rakit_state == "BALIK_KE_POSISI2":
-            gerak.base_speed = 80
-            gerak.max_pwm = 100
-            gerak.mundur(robot)
-            if (jarak_belakang <= 40):
-                self.transition_to("FINISHED", now, robot, gerak)
-            else:
-                pass
             
             
 

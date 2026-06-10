@@ -29,6 +29,8 @@ class SystemState:
         self.naikturun_sub_state1 = "PERISAPAN"
         self.naikturun_sub_state2 = "PERISAPAN"
         self.naikturun_start_time = now # Ubah dari 0.0
+        self.naikturun_transition_start = now
+        
         self.naikturun_then = now # Ubah dari 0.0
         self.naikturun_is_done = False
 
@@ -50,7 +52,7 @@ class SensorData:
         self.temp_kompas = 0
         self.kompas = 0
         # sensor ultrasonic
-        self.jarak_depan = 0
+        self.ultrasonic_depan = 0
         self.ultrasonic_kiri = 0
         self.ultrasonic_kanan = 0
         self.ultrasonic_belakang = 0
@@ -116,7 +118,8 @@ class SensorData:
                 
             # 4. Simpan hasil akhir
             self.kompas = sudut_relatif
-            self.jarak_depan   = arr[1]
+            self.kompas2      = arr[9]
+            self.ultrasonic_depan   = arr[1]
     
             self.ultrasonic_kiri    = arr[2]
             self.ultrasonic_kanan = arr[3]
@@ -124,14 +127,16 @@ class SensorData:
 
             self.tombol_start = arr[5]
             self.tombol_reset = arr[6]
-            self.cekTombak   = arr[7]
 
+            self.proxi_belakang  = arr[7]
+            self.proxi_depan     = arr[8] 
 
-            self.proxi_belakang      = arr[8]   
+            
+
             self.limit_kanan_capit   = arr[9]
             self.limit_capitBuka      = arr[10]
             self.limit_capitJepit      = arr[11]
-            self.proxi_depan      = arr[12]
+            self.proxi_depan1      = arr[12]
             
             self.kompas2      = arr[13]
             
@@ -160,16 +165,12 @@ class MotorCommand:
         self.pwLogic = 0     # data 8
 
         # Relay tambahan (pin 40 & pin 42)
-        self.relay_tambahan1 = 0 # data 9
-        self.relay_tambahan2 = 0 # data 10
+        self.CapitTombakJepit = 0 # data 9
+        self.CapitTombakNaikTurun = 0 # data 10
 
         # Deprecated / Dummy variables to maintain backward compatibility with other scripts
-        self.relay_pw_kanan = 0
-        self.relay_pw_kiri = 0
-        self.capit_putar_kiri = 0
-        self.capit_putar_kanan = 0
-        self.capit_jepit = 0
-        self.stepper1 = 0
+        self.relayCapitKFSAngkat = 0
+        self.relayCapitKFSJepit = 0
 
     def get_array_output(self):
         """
@@ -180,7 +181,10 @@ class MotorCommand:
             self.m4_pwm, self.m5_pwm, self.m6_pwm,
             self.mDorong1, self.mDorong2,
             self.pwLogic,
-            self.relay_tambahan1, self.relay_tambahan2
+            self.CapitTombakJepit, self.CapitTombakNaikTurun,
+            self.relayCapitKFSAngkat, self.relayCapitKFSJepit,  
+            0,
+            0
         ]
         
         return arr
@@ -198,7 +202,9 @@ class Robot:
         self.OutputTerhubung = False
 
         self.ROBOT_MAIN_STATE = "STANDBY"
-        self.targetJarakKanan = 11 # JARAK AWAL DI KANAN
+        self.targetJarakKanan = 8 # JARAK AWAL DI KANAN
         self.targetJarakBelakang = 15
+
+        self.totalNaik = 0
         
         

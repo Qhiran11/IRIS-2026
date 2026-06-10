@@ -104,7 +104,7 @@ def main():
                 # gerak.maju_diagonal_kanan(robot)
 
                 # 3. KALKULASI PID DAN GERAKAN
-                # gerak.hadap_sudut(robot)
+                # gerak.hadap_sudut(robot, now)
                 # gerak.mundur(robot)
                 # selesai = rakit.RakitSenjata()
                 # selesai = masukMainhua._proses_ke_tengah(robot, gerak)
@@ -204,7 +204,7 @@ def main():
                 #                 STATE = TEMP_STATE # Lanjut ke aksi "NAIK" atau "TURUN"
                 #         else:
                 #             gerak.base_speed = 60
-                #             gerak.hadap_sudut(robot)
+                #             gerak.hadap_sudut(robot, now)
                 #             then = now
                             
                 #     case "NAIK":

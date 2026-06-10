@@ -17,25 +17,16 @@ class Zona3:
         self.then = 0
         
     
-    def logic_zona3(self,robot,gerak):
-        now = time.time()
+    def logic_zona3(self,robot,gerak,now):
+        jarak_kanan = robot.sensor.ultrasonic_kanan
+        
+        kompas2 = robot.sensor.kompas2
         if self.state == "READY":
             gerak.target_angle = 0
             gerak.base_speed  = 80
             gerak.max_pwm = gerak.base_speed
             self.then = now
-            self.state = "STABLE"
-
-        elif self.state == "STABLE":
-            if (robot.sensor.kompas > gerak.target_angle -1 and robot.sensor.kompas < gerak.target_angle +1):
-                gerak.stop(robot)
-                
-                if time.time() - self.then > 0.1:
-                    gerak.stop(robot)
-                    self.state = "STABLE"
-            else:
-                gerak.hadap_sudut(robot)
-                self.then = time.time()
+            self.state = "KANAN"
 
         elif self.state == "KANAN":
             if gerak.geser_ke_tengah2(robot, self.jarak_naik_kanan):
@@ -81,7 +72,7 @@ class Zona3:
                     # Pastikan apakah seharusnya self.state = "MAJU"
                     STATE =  "MAJU" 
             else:
-                gerak.hadap_sudut(robot)
+                gerak.hadap_sudut(robot, now)
                 self.then = time.time()
         
         elif self.state == "PUTAR":
@@ -91,7 +82,7 @@ class Zona3:
                     gerak.stop(robot)
                     self.state =  "MAJU"
             else:
-                gerak.hadap_sudut(robot)
+                gerak.hadap_sudut(robot, now)
                 self.then = time.time()
         
         elif self.state == "MAJU":

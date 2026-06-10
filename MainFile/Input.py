@@ -21,42 +21,28 @@ class SensorReader:
             print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")
             return False
 
-    def trigger_reset_mega(self):
-        """Mengirim byte trigger ke Mega untuk melakukan self-reset dan Auto-Reconnect"""
-        print("[WARNING] Koneksi MEGA Freeze atau Terputus! Memulai protokol pemulihan...")
+    def trigger_koneksi_ulang(self):
+        """Menutup port secara paksa dan mencoba menghubungkan ulang (Reconnect)"""
+        print("[WARNING] Koneksi MEGA Freeze atau Terputus! Memulai protokol reconnect...")
         
-        if self.ser and self.ser.is_open:
+        # 1. Tutup port jika masih dianggap terbuka oleh program
+        if self.ser:
             try:
-                # 1. Coba kirim sinyal reset terlebih dahulu
-                self.ser.write(b'R') 
-                self.ser.flush()
-                print("[INPUT] Sinyal reset terkirim. Menunggu Mega booting...")
-                
-                # Beri waktu 2 detik untuk Arduino Mega melakukan booting ulang
-                time.sleep(2.0) 
-                
-                self.ser.reset_input_buffer()
-                self.last_data_time = time.time()
-                
+                self.ser.close()
+                print("[RECOVERY] Port serial berhasil ditutup.")
             except Exception as e:
-                # 2. Jika gagal (Errno 5 I/O Error), berarti port fisik sudah terputus dari OS
-                print(f"[ERROR] Gagal mengirim sinyal reset (Hardware Drop): {e}")
-                print("[RECOVERY] Memaksa tutup port dan mencoba menghubungkan ulang...")
+                print(f"[RECOVERY] Gagal menutup port (mungkin sudah drop dari OS): {e}")
                 
-                # Tutup port yang sudah jadi "hantu"
-                try:
-                    self.ser.close()
-                except:
-                    pass 
-                
-                time.sleep(1.0) # Jeda agar sistem operasi Linux mendeteksi ulang USB
-                
-                # Panggil ulang fungsi connect untuk membuka jalur port baru
-                if self.connect():
-                    self.last_data_time = time.time()
-                    print("[RECOVERY] Berhasil terhubung ulang ke Mega!")
-                else:
-                    print("[RECOVERY] Gagal terhubung ulang. Cek fisik kabel USB Anda!")
+        # 2. Beri jeda agar sistem operasi (Windows/Linux) melepas resource USB sepenuhnya
+        time.sleep(1.0) 
+        
+        # 3. Panggil fungsi connect() untuk membuka jalur port baru
+        print("[RECOVERY] Mencoba menghubungkan ulang...")
+        if self.connect():
+            self.last_data_time = time.time() # Reset waktu agar tidak langsung ter-trigger lagi
+            print("[RECOVERY] Berhasil terhubung ulang ke Mega!")
+        else:
+            print("[RECOVERY] Gagal terhubung ulang. Cek fisik kabel USB Anda!")
     
     def baca_data(self):
         """
@@ -68,7 +54,7 @@ class SensorReader:
 
         # Cek apakah terjadi Freeze (Tidak ada data valid selama lebih dari 1.5 detik)
         if time.time() - self.last_data_time > 1.5:
-            self.trigger_reset_mega()
+            self.trigger_koneksi_ulang()  # <--- Pemanggilan fungsi yang baru
             return None
 
         try:
