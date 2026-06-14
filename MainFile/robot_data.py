@@ -30,6 +30,8 @@ class SystemState:
         self.naikturun_sub_state2 = "PERISAPAN"
         self.naikturun_start_time = now # Ubah dari 0.0
         self.naikturun_transition_start = now
+        self.naikturun_transition_start1 = now
+        self.naikturun_transition_start2 = now
         
         self.naikturun_then = now # Ubah dari 0.0
         self.naikturun_is_done = False

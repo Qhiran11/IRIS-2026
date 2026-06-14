@@ -336,8 +336,8 @@ class GerakanDasar:
         robot.state.gerak_dasar_aktif = "mundur roda 2"
 
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        self.base_speed = 40
-        self.max_pwm = 40   
+        self.base_speed = 55
+        self.max_pwm = 60   
 
         speed_m0 = -self.base_speed - kor
         speed_m1 = -self.base_speed + kor 

@@ -87,8 +87,8 @@ class GerakanNaikTurun:
                 print(f"[NAIK-TURUN NAIK] Masuk ke state: {robot.state.naikturun_sub_state1}")
         
         elif robot.state.naikturun_sub_state1 == "PERISAPAN":
-            gerak.base_speed  = 20
-            gerak.max_pwm = 30
+            gerak.base_speed  = 15
+            gerak.max_pwm = 15
             self.transition_naik("MAJU", now, robot, gerak, stop=False)
 
         elif robot.state.naikturun_sub_state1 == "MAJU":
@@ -109,7 +109,7 @@ class GerakanNaikTurun:
 
         elif robot.state.naikturun_sub_state1 == "BODY2NAIK":
             gerak.turun(robot)
-            if (now - robot.state.naikturun_transition_start1 > 3.0):
+            if (now - robot.state.naikturun_transition_start1 > 5.0):
                 self.transition_naik("PASKANTENGAH", now, robot, gerak)
         
         elif robot.state.naikturun_sub_state1 == "PASKANTENGAH":
@@ -117,7 +117,8 @@ class GerakanNaikTurun:
                 self.transition_naik("PASKANHARIZONTAL", now, robot, gerak)
                 
         elif robot.state.naikturun_sub_state1 == "PASKANHARIZONTAL":
-            if gerak.geser_ke_titik_kiri(robot, 24, now):
+            gerak.base_speed = gerak.max_pwm = 30
+            if gerak.geser_ke_titik_kiri(robot, 25, now):
                 self.transition_naik("PERISAPAN", now, robot, gerak)
                 return True
 
@@ -208,17 +209,19 @@ class GerakanNaikTurun:
         
         elif robot.state.naikturun_sub_state1 == "MAJU2":
             gerak.maju_roda_2(robot)
-            if (proximity_belakang == 0):
+            if (jarak_belakang > 105):
                 gerak.stop_roda_2(robot)
                 self.transition_naik("BODY2NAIK", now, robot, gerak)
 
 
         elif robot.state.naikturun_sub_state1 == "BODY2NAIK":
             gerak.turun(robot)
-            if (now - robot.state.naikturun_transition_start1 > 3.0):
+            if (now - robot.state.naikturun_transition_start1 > 1.5):
                 self.transition_naik("DELAYMAJU", now, robot, gerak)
         
         elif robot.state.naikturun_sub_state1 == "DELAYMAJU":
+            gerak.base_speed  = 40
+            gerak.max_pwm = 50
             gerak.maju(robot)
             if (now - robot.state.naikturun_transition_start1 > 0.1):
                 self.transition_naik("PASKANHARIZONTAL", now, robot, gerak)

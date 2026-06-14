@@ -139,6 +139,7 @@ def main():
                     # gerak.maju_roda_2(robot)
                     # gerak.robot(robot)
                     gerak.turun(robot)
+                    # gerak.naik(robot)
                     gerak.stop(robot) #                     <==================TESTING
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
@@ -183,6 +184,7 @@ def main():
                         gerak.stop(robot)
                         if (now - robot.state.main_then > 0.1):
                             robot.state.main_state = "GO"
+                            # robot.state.main_state = "AMBILKFS"
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
@@ -207,7 +209,6 @@ def main():
                                 robot.state.main_state = "NAIK"
                             else:
                                 robot.state.main_state = "PUTAR"
-                                gerak.stop(robot)
                             # return
         
                     elif robot.state.main_state == "NAIK":
