@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from Input import SensorReader
 from Output import ArduinoDueWriter
-from robot_data import Robot
+from data_robot.robot_data import Robot
 from GerakanCapitKFS import GerakanCapitKFS
 from GerakanAmbilKFS import GerakanAmbilKFS
 from GerakanAmbilPasangRakitSenjata import RakitSenjata
@@ -19,7 +19,6 @@ from TelemetriJetson import TelemetryServer
 from GerakanDasar import GerakanDasar
 from InputKamera import KameraSensor
 from InputKameraQR import DeteksiQR
-from InputTombol import TombolKontrol
 
 
 def hard_restart_sistem(sensor, writer, kamera, tombol_jetson, gerak, robot):
@@ -117,7 +116,6 @@ def main():
 
     bool_putar_ganti = "NAIK"
     detectKfs = ""
-    tombol_jetson = TombolKontrol(pin_start=31, pin_reset=33)
     
     is_running = False # Flag penanda apakah robot sedang standby atau running
 

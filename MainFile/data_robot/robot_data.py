@@ -1,4 +1,5 @@
 import time # Tambahkan ini di bagian atas file
+from data_robot.ConfigManager import ConfigManager
 # Tambahkan kelas ini sebelum class Robot
 class SystemState:
     def __init__(self):
@@ -208,5 +209,5 @@ class Robot:
         self.targetJarakBelakang = 15
 
         self.totalNaik = 0
-        
+        self.config = ConfigManager('config.json')
         

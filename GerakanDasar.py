@@ -1,5 +1,3 @@
-from MainFile import robot_data
-from MainFile import robot_data
 import time
 from NonBlockingDelay import NonBlockingDelay
 

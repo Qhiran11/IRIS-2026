@@ -1,0 +1,70 @@
+{
+    "umum": {
+        "jeda_transisi_default": 0.01,
+        "target_jarak_kanan_awal": 8,
+        "target_jarak_belakang_awal": 15
+    },
+    "gerakan_kfs": {
+        "maju": {
+            "base_speed": 30,
+            "max_pwm": 40,
+            "target_jarak": 4
+        },
+        "timing": {
+            "angkat": 4.3,
+            "jepit_stop": 3.8,
+            "maju": 3.4,
+            "buka_stop": 3.1,
+            "mundur": 2.7,
+            "jepit_lagi": 1.7,
+            "turun": 1.0,
+            "buka_awal": 0.1
+        }
+    },
+    "gerakan_naikturun": {
+        "tengah": {
+            "siap_base_speed": 120,
+            "siap_max_pwm": 140,
+            "samping_base_speed": 100,
+            "samping_max_pwm": 120,
+            "paskan_base_speed": 30,
+            "paskan_max_pwm": 30
+        },
+        "naik": {
+            "persiapan_base_speed": 15,
+            "persiapan_max_pwm": 15
+        },
+        "turun": {
+            "persiapan_base_speed": 20,
+            "persiapan_max_pwm": 20
+        }
+    },
+    "rakit_senjata": {
+        "titik_referensi_tombak": [11, 31, 51, 71, 91, 111],
+        "mendekat": {
+            "base_speed": 100,
+            "max_pwm": 180,
+            "target_mundur": 15
+        },
+        "geser_samping": {
+            "base_speed": 45,
+            "max_pwm": 65
+        },
+        "mulai_jepit": {
+            "base_speed": 15,
+            "max_pwm": 20,
+            "batas_belakang": 3
+        },
+        "maju_30cm": {
+            "base_speed": 120,
+            "max_pwm": 255,
+            "batas_belakang": 51
+        },
+        "putar": {
+            "base_speed": 100,
+            "max_pwm": 110,
+            "target_angle_1": 90,
+            "target_angle_2": -90
+        }
+    }
+}
