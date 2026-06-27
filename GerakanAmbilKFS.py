@@ -16,7 +16,8 @@ class GerakanAmbilKFS:
         jarak_depan = robot.sensor.ultrasonic_depan
         if robot.state.kfs_state == "TRANSISI":
             gerak.stop(robot)
-            if (now - robot.state.kfs_transition_start > 0.01): # Jeda transisi 0.01 detik
+            jeda_transisi = robot.config.data.get("umum", {}).get("jeda_transisi_default", 0.01)
+            if (now - robot.state.kfs_transition_start > jeda_transisi): # Jeda transisi 0.01 detik
                 robot.state.kfs_state = robot.state.kfs_next_state
                 robot.state.kfs_transition_start = now
                 print(f"[KFS] Masuk ke state: {robot.state.kfs_state}")
@@ -27,31 +28,34 @@ class GerakanAmbilKFS:
             self.transition_to("MAJU", now, robot, gerak)
         
         elif robot.state.kfs_state == "MAJU":
-            gerak.base_speed = 30
-            gerak.max_pwm = 40
-            if gerak.maju_ke_titik(robot, 4, now) or jarak_depan == 0:
+            maju_cfg = robot.config.data.get("gerakan_kfs", {}).get("maju", {})
+            gerak.base_speed = maju_cfg.get("base_speed", 30)
+            gerak.max_pwm = maju_cfg.get("max_pwm", 40)
+            target_jarak = maju_cfg.get("target_jarak", 4)
+            if gerak.maju_ke_titik(robot, target_jarak, now) or jarak_depan == 0:
                 self.transition_to("AMBIL_KFS", now, robot, gerak)
                 
         elif robot.state.kfs_state == "AMBIL_KFS":
             t = now - robot.state.kfs_transition_start
-            if t > 4.3: #angkat
+            timing = robot.config.data.get("gerakan_kfs", {}).get("timing", {})
+            if t > timing.get("angkat", 4.3): #angkat
                 robot.motor.relayCapitKFSAngkat = 0
                 return True
-            elif t > 3.8:  #jepit + stop
+            elif t > timing.get("jepit_stop", 3.8):  #jepit + stop
                 robot.motor.relayCapitKFSJepit  = 1
                 gerak.stop(robot)
-            elif t > 3.4:  #maju
+            elif t > timing.get("maju", 3.4):  #maju
                 gerak.maju(robot)
-            elif t > 3.1: #buka +stop
+            elif t > timing.get("buka_stop", 3.1): #buka +stop
                 robot.motor.relayCapitKFSJepit  = 0
                 gerak.stop(robot)
-            elif t > 2.7:  #mundur
+            elif t > timing.get("mundur", 2.7):  #mundur
                 gerak.mundur(robot)
-            elif t > 1.7: #jepit
+            elif t > timing.get("jepit_lagi", 1.7): #jepit
                 robot.motor.relayCapitKFSJepit  = 1
-            elif t > 1.0: #turun
+            elif t > timing.get("turun", 1.0): #turun
                 robot.motor.relayCapitKFSAngkat = 1 
-            elif t > 0.1: #buka
+            elif t > timing.get("buka_awal", 0.1): #buka
                 robot.motor.relayCapitKFSJepit  = 0      
         return False
 

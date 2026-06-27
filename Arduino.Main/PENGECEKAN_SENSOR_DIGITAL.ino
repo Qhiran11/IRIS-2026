@@ -5,7 +5,7 @@
 // // Pin 28-46 (total 19 pin) + A0, A1 (2 pin) = 21 pin
 // // Catatan: Jika ingin tepat 20, silakan sesuaikan isi array di bawah
 // const int pinList[] = {
-//   28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, A0, A1
+//   28, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, A0, A1
 // };
 
 // // Menghitung jumlah pin secara otomatis

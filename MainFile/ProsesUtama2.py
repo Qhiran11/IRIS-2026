@@ -99,23 +99,13 @@ def main():
  
     gerak = GerakanDasar()
     rakit = RakitSenjata()
-    Capit = GerakanCapitKFS()
     ambil_kfs = GerakanAmbilKFS() # Inisialisasi Otak Kecil
-    array_temp = [0] * 12
-    errorCount = 0
-    last_change_time = time.time()
-    rakit = RakitSenjata()
     masukMainhua = GerakanNaikTurun()
     zona3 = Zona3()
 
     # kamera = KameraSensor(robot.sensor, tampilkan_video=False)
     kamera = DeteksiQR(robot, tampilkan_video=False)
     kamera.start()
-
-    prosesAmbilKfs = False
-
-    bool_putar_ganti = "NAIK"
-    detectKfs = ""
     
     is_running = False # Flag penanda apakah robot sedang standby atau running
 
@@ -127,26 +117,16 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
-                    # Pastikan motor benar-benar mati saat standby
                     gerak.target_angle = 0
-                    # gerak.hadap_sudut(robot, now)
-                    # gerak.kanan(robot) #    <==================TESTING
-                    # gerak.kiri(robot) #    <==================TESTING
-                    # gerak.maju(robot) #    <==================TESTING
-                    # gerak.mundur(robot) #    <==================TESTING
-                    # gerak.maju_roda_2(robot)
-                    # gerak.robot(robot)
-                    gerak.turun(robot)
-                    # gerak.naik(robot)
-                    gerak.stop(robot) #                     <==================TESTING
+                    nama_gerakan = robot.config.data.get("umum", {}).get("gerak_dasar", "stop")
+                    if hasattr(gerak, nama_gerakan):
+                        getattr(gerak, nama_gerakan)(robot)
+                    else:
+                        gerak.stop(robot)
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
                     # robot.motor.CapitTombakNaikTurun = 1
                     # robot.motor.relayCapitKFSJepit = 0
-                    
-                    
-
-                    
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
@@ -283,30 +263,19 @@ def main():
             time.sleep(0.01)
     
     except KeyboardInterrupt:
-        # ... (Biarkan bagian ini tetap seperti aslinya)
         print("\n[FAILSAFE] Terminal dihentikan paksa (Ctrl+C)!")
-
     except Exception as e:
         print(f"\n[FAILSAFE] Terjadi Error Sistem: {e}")
-
     finally:
         print("[FAILSAFE] Mematikan semua motor...")
-        
-        # 1. Nol-kan semua nilai PWM dan target
         gerak.stop(robot)
-        robot.motor.stepper1 = 0
-        robot.motor.capit_putar_kiri = 0
-        robot.motor.capit_putarobot = 0
         robot.motor.capit_jepit = 0
-        
-        # 2. Paksa kirim array berisi angka 0 ke Arduino Due
         try:
             writer.kirim_data(robot.motor.get_array_output())
             print("[FAILSAFE] Data stop berhasil dikirim ke roda.")
         except:
             print("[FAILSAFE] Gagal mengirim data stop (kabel mungkin terputus).")
             
-        # 3. Clean up GPIO pins
         try:
             tombol_jetson.cleanup()
             print("[FAILSAFE] GPIO Cleanup selesai.")

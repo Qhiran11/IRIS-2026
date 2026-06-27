@@ -15,7 +15,7 @@ class SensorReader:
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
             print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}")
-            self.last_data_time = time.time() # Reset tracker saat koneksi awal
+            self.last_data_time = time.time() + 2.0 # Beri toleransi waktu booting Arduino Mega (2 detik)
             return True
         except Exception as e:
             print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")
@@ -25,7 +25,15 @@ class SensorReader:
         """Menutup port secara paksa dan mencoba menghubungkan ulang (Reconnect)"""
         print("[WARNING] Koneksi MEGA Freeze atau Terputus! Memulai protokol reconnect...")
         
-        # 1. Tutup port jika masih dianggap terbuka oleh program
+        # 1. Kirim sinyal reset 'R' jika port masih terbuka untuk memicu watchdog reset di Arduino
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.write(b'R')
+                time.sleep(0.05)
+            except Exception as e:
+                print(f"[RECOVERY] Gagal mengirim sinyal reset 'R': {e}")
+
+        # 2. Tutup port jika masih dianggap terbuka oleh program
         if self.ser:
             try:
                 self.ser.close()
@@ -33,13 +41,12 @@ class SensorReader:
             except Exception as e:
                 print(f"[RECOVERY] Gagal menutup port (mungkin sudah drop dari OS): {e}")
                 
-        # 2. Beri jeda agar sistem operasi (Windows/Linux) melepas resource USB sepenuhnya
+        # 3. Beri jeda agar sistem operasi (Windows/Linux) melepas resource USB sepenuhnya
         time.sleep(1.0) 
         
-        # 3. Panggil fungsi connect() untuk membuka jalur port baru
+        # 4. Panggil fungsi connect() untuk membuka jalur port baru
         print("[RECOVERY] Mencoba menghubungkan ulang...")
         if self.connect():
-            self.last_data_time = time.time() # Reset waktu agar tidak langsung ter-trigger lagi
             print("[RECOVERY] Berhasil terhubung ulang ke Mega!")
         else:
             print("[RECOVERY] Gagal terhubung ulang. Cek fisik kabel USB Anda!")
@@ -48,6 +55,20 @@ class SensorReader:
         """
         Membaca paket 17 data int16 (Total 39 byte).
         Struktur Paket: [AA 55] [34 byte data] [CRC] [0D 0A]
+        
+        Pemetaan data payload (17 int16):
+        - index 0: cmpsHeading (Kompas)
+        - index 1: S4 (Depan)
+        - index 2: S7 (Kiri via UART)
+        - index 3: S2 (Kanan)
+        - index 4: S5 (Belakang)
+        - index 5: tombol_start (Nano_A)
+        - index 6: tombol_reset (Nano_B)
+        - index 7: S3 (Bawah Depan)
+        - index 8: S1 (Bawah Tengah)
+        - index 9: S6 (Bawah Belakang)
+        - index 10: cmpsPitch (Pitch Kompas)
+        - index 11-16: Unused (Cadangan)
         """
         if not self.ser or not self.ser.is_open:
             return None 
@@ -92,3 +113,12 @@ class SensorReader:
             pass
             
         return None
+
+    def close(self):
+        """Menutup port serial dengan aman."""
+        if self.ser:
+            try:
+                self.ser.close()
+                print("[INPUT] Port serial berhasil ditutup.")
+            except Exception as e:
+                print(f"[INPUT] Gagal menutup port serial: {e}")

@@ -50,3 +50,16 @@ class ConfigManager:
                         self.load_config()
             except Exception as e:
                 pass
+
+
+    def save_config(self):
+        """Menulis ulang seluruh data konfigurasi saat ini kembali ke file JSON secara aman."""
+        try:
+            with open(self.filepath, 'w') as file:
+                # json.dump akan mengubah data dictionary kembali menjadi teks format JSON yang rapi (indent=4)
+                json.dump(self.data, file, indent=4)
+            # Update waktu modifikasi agar ConfigManager tahu ini versi paling baru
+            self.last_modified_time = os.path.getmtime(self.filepath)
+            print("[CONFIG] Berhasil menyimpan perubahan otomatis ke file!")
+        except Exception as e:
+            print(f"[CONFIG ERROR] Gagal menyimpan file: {e}")

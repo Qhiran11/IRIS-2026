@@ -2,7 +2,8 @@
     "umum": {
         "jeda_transisi_default": 0.01,
         "target_jarak_kanan_awal": 8,
-        "target_jarak_belakang_awal": 15
+        "target_jarak_belakang_awal": 15,
+        "gerak_dasar" : "maju"
     },
     "gerakan_kfs": {
         "maju": {

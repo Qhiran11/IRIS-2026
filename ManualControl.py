@@ -22,17 +22,15 @@ class MotorControllerApp(ctk.CTk):
         
         # State Data
         self.motor_names = [
-            "M0 (Driver Kanan)", "M1 (Driver Kiri)", 
-            "M2 (DC Kanan Depan)", "M3 (DC Kiri Depan)", 
-            "M4 (DC Kanan Bkng)", "M5 (DC Kiri Bkng)",
-            "M6 (Relay PW Kanan)", "M7 (Relay PW Kiri)",
-            "M8 (pwLogic)",
-            "M9 (Relay Tambahan 1)", "M10 (Relay Tambahan 2)",
-            "M11 (Capit 1)", "M12 (Capit 2)",
-            "M13 (Unused)", "M14 (Unused)"
+            "M0 (PW Kanan)", "M1 (PW Kiri)", 
+            "M2 (FR Kanan Depan)", "M3 (FL Kiri Depan)", 
+            "M4 (BR Kanan Bkng)", "M5 (BL Kiri Bkng)",
+            "M6 (PCA Motor)", 
+            "M7 (Relay 1 - Pin 40)", "M8 (Relay 2 - Pin 42)", "M9 (Relay 3 - Pin 36)",
+            "M10 (Unused)", "M11 (Unused)", "M12 (Unused)", "M13 (Unused)", "M14 (Unused)"
         ]
 
-        self.motor_limits = [255,255,255,255,255,255,255,255,1,1,1,1,1,255,255]
+        self.motor_limits = [255, 255, 255, 255, 255, 255, 4095, 1, 1, 1, 255, 255, 255, 255, 255]
         self.motor_speeds = [0] * 15
         self.entry_vars = []
         
@@ -136,8 +134,8 @@ class MotorControllerApp(ctk.CTk):
             lbl.pack(side="left")
             
             btn_dec = ctk.CTkButton(row, text="<", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [6, 7, 8, 9, 10]:
-                btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, -1 if i in [6,7] else 1))
+            if i in [7, 8, 9]:
+                btn_dec.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_dec.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
                 btn_dec.configure(command=lambda m=i: self.step_motor(m, -1))
@@ -150,7 +148,7 @@ class MotorControllerApp(ctk.CTk):
             self.entry_vars.append(var)
             
             btn_inc = ctk.CTkButton(row, text=">", width=35, fg_color="#34495E", font=("Arial", 16,"bold"))
-            if i in [6, 7, 8, 9, 10]:
+            if i in [7, 8, 9]:
                 btn_inc.bind("<ButtonPress-1>", lambda e, m=i: self.set_motor_val(m, 1))
                 btn_inc.bind("<ButtonRelease-1>", lambda e, m=i: self.set_motor_val(m, 0))
             else:
@@ -301,9 +299,9 @@ class MotorControllerApp(ctk.CTk):
         self.update_entry_text()
 
     def cmd_pw(self, pressed, dir_val):
-        s = dir_val
-        self.set_motor_val(6, s if pressed else 0)
-        self.set_motor_val(7, s if pressed else 0)
+        s = dir_val * 255
+        self.set_motor_val(0, s if pressed else 0)
+        self.set_motor_val(1, s if pressed else 0)
 
     # ===============================================
     # SERIAL TX (TRANSMITTER) - THREAD
@@ -320,7 +318,6 @@ class MotorControllerApp(ctk.CTk):
             if self.ser and self.ser.is_open:
                 try:
                     with self.data_lock:
-                        self.motor_speeds[8] = 0 # pwLogic (indeks 8)
                         speeds_snapshot = self.motor_speeds.copy()
                         
                     if self.temp_speeds != speeds_snapshot or (current_time - self.last_sent_time > 0.05):

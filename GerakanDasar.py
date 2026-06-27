@@ -55,10 +55,10 @@ class GerakanDasar:
         BR_val = max(-self.max_pwm, min(self.max_pwm, int(BR)))
 
         # Masukkan ke variabel motor yang benar
-        robot.motor.m4_pwm = FL_val
-        robot.motor.m3_pwm = FR_val
-        robot.motor.m6_pwm = BL_val
-        robot.motor.m5_pwm = BR_val
+        robot.motor.m1_pwm = FL_val
+        robot.motor.m0_pwm = FR_val
+        robot.motor.m3_pwm = BL_val
+        robot.motor.m2_pwm = BR_val
 
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
@@ -317,36 +317,14 @@ class GerakanDasar:
     def maju_roda_2(self, robot):
         # self._apply_motor(robot, 0,0,0,0)
         robot.state.gerak_dasar_aktif = "maju roda 2"
-
-        kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        self.base_speed = 150
-        self.max_pwm = 150   
-
-        speed_m0 = self.base_speed - kor
-        speed_m1 = self.base_speed + kor 
-
-        robot.motor.m2_pwm = max(-self.max_pwm, min(self.max_pwm, int(speed_m0)))
-        robot.motor.m1_pwm = max(-self.max_pwm, min(self.max_pwm, int(speed_m1)))
-
     
     def mundur_roda_2(self, robot):
         self._apply_motor(robot, 0,0,0,0)
         robot.state.gerak_dasar_aktif = "mundur roda 2"
-
-        kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
-        self.base_speed = 55
-        self.max_pwm = 60   
-
-        speed_m0 = -self.base_speed - kor
-        speed_m1 = -self.base_speed + kor 
-
-        robot.motor.m2_pwm = max(-self.max_pwm, min(self.max_pwm, int(speed_m0)))
-        robot.motor.m1_pwm = max(-self.max_pwm, min(self.max_pwm, int(speed_m1)))
     
     def stop_roda_2(self, robot):
         robot.state.gerak_dasar_aktif = "mundur roda 2"
-        robot.motor.m2_pwm = 0
-        robot.motor.m1_pwm = 0
+
     
     
     

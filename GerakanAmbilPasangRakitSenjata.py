@@ -27,7 +27,7 @@ class RakitSenjata:
             robot.state.sedang_menyesuaikan_tombak = True
             
             # Daftar titik target valid: 11 + [0, 20, 40, 60, 80, 100]
-            titik_referensi = [11, 31, 51, 71, 91, 111]
+            titik_referensi = robot.config.data.get("rakit_senjata", {}).get("titik_referensi_tombak", [11, 31, 51, 71, 91, 111])
             
             # Cari nilai di dalam titik_referensi yang jarak selisihnya paling kecil dengan jarak_kanan saat ini
             titik_terdekat = min(titik_referensi, key=lambda x: abs(x - jarak_kanan))
@@ -100,7 +100,8 @@ class RakitSenjata:
         # ---------------------------------------------------------
         if robot.state.rakit_state == "TRANSISI":
             gerak.stop(robot)
-            if (now - robot.state.rakit_transition_start > 0.01): # Jeda transisi 0.1 detik
+            jeda_transisi = robot.config.data.get("umum", {}).get("jeda_transisi_default", 0.01)
+            if (now - robot.state.rakit_transition_start > jeda_transisi): # Jeda transisi 0.1 detik
                 robot.state.rakit_state = robot.state.rakit_next_state
                 robot.state.rakit_transition_start = now
                 print(f"[SENJATA] Masuk ke state: {robot.state.rakit_state}")
@@ -115,7 +116,7 @@ class RakitSenjata:
             gerak.maju(robot)
             if (jarak_belakang >= 35):
                 self.transition_to("PUTAR1", now, robot, gerak)
-                gerak.target_angle = 90                
+                gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_1", 90)                
 
         elif robot.state.rakit_state == "PUTAR1":
             gerak.hadap_sudut(robot, now)
@@ -125,26 +126,29 @@ class RakitSenjata:
                     self.transition_to("MENDEKAT", now, robot, gerak)
         
         elif robot.state.rakit_state == "MENDEKAT":
-            gerak.base_speed = 100 # Kecepatan pelan
-            gerak.max_pwm = 180
+            cfg_dekat = robot.config.data.get("rakit_senjata", {}).get("mendekat", {})
+            gerak.base_speed = cfg_dekat.get("base_speed", 100) # Kecepatan pelan
+            gerak.max_pwm = cfg_dekat.get("max_pwm", 180)
             if gerak.mundur_ke_titik(robot, target_jarak, now):
                 robot.state.rakit_transition_start = now
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
-            gerak.base_speed = 45 # Kecepatan pelan
-            gerak.max_pwm = 65
+            cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping", {})
+            gerak.base_speed = cfg_geser.get("base_speed", 45) # Kecepatan pelan
+            gerak.max_pwm = cfg_geser.get("max_pwm", 65)
             robot.motor.CapitTombakNaikTurun = 1
             if gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan, now):
                 self.transition_to("MULAI_JEPIT", now, robot, gerak)
 
         elif robot.state.rakit_state == "MULAI_JEPIT":
-            gerak.base_speed = 15 # Jauh lebih pelan
-            gerak.max_pwm = 20
+            cfg_jepit = robot.config.data.get("rakit_senjata", {}).get("mulai_jepit", {})
+            gerak.base_speed = cfg_jepit.get("base_speed", 15) # Jauh lebih pelan
+            gerak.max_pwm = cfg_jepit.get("max_pwm", 20)
             robot.motor.CapitTombakJepit = 1
             if (now - robot.state.rakit_transition_start > 1.0 ):
                 gerak.mundur(robot)
-            if jarak_belakang < 3: # target 2 cm
+            if jarak_belakang < cfg_jepit.get("batas_belakang", 3): # target 2 cm
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)
 
@@ -160,14 +164,15 @@ class RakitSenjata:
                 self.transition_to("MAJU_30CM", now, robot, gerak)
 
         elif robot.state.rakit_state == "MAJU_30CM":
-            gerak.base_speed = 120
-            gerak.max_pwm = 255
+            cfg_maju = robot.config.data.get("rakit_senjata", {}).get("maju_30cm", {})
+            gerak.base_speed = cfg_maju.get("base_speed", 120)
+            gerak.max_pwm = cfg_maju.get("max_pwm", 255)
             
-            if jarak_belakang >= 51: # target 30 cm (52cm sensor belakang)
+            if jarak_belakang >= cfg_maju.get("batas_belakang", 51): # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.1):
                     print("[SENJATA] Tiba di posisi 30cm.")
-                    gerak.target_angle = -90
+                    gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_2", -90)
                     self.transition_to("PUTAR_NEG_90", now, robot, gerak)
             else:
                 if robot.targetJarakKanan <= 35:
@@ -177,8 +182,9 @@ class RakitSenjata:
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":
-            gerak.base_speed = 100
-            gerak.max_pwm = 110
+            cfg_putar = robot.config.data.get("rakit_senjata", {}).get("putar", {})
+            gerak.base_speed = cfg_putar.get("base_speed", 100)
+            gerak.max_pwm = cfg_putar.get("max_pwm", 110)
             gerak.hadap_sudut(robot, now)
             if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
                 if (now - robot.state.rakit_transition_start > 0.2):

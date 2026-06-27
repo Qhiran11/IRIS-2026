@@ -60,6 +60,12 @@ class SensorData:
         self.ultrasonic_kanan = 0
         self.ultrasonic_belakang = 0
 
+        # Sensor tambahan baru
+        self.ultrasonic_bawah_depan = 0
+        self.ultrasonic_bawah_tengah = 0
+        self.ultrasonic_bawah_belakang = 0
+        self.pitch_kompas = 0
+
         self.tombol_start = 1
         self.tombol_reset = 1
         self.cekTombak = 0
@@ -98,13 +104,10 @@ class SensorData:
 
     def update_dari_array(self, arr):
         """
-        Memetakan array[12] dari STM32 ke variabel objek.
-        Sesuaikan index [0-11] dengan urutan pengiriman di STM32 Anda.
+        Memetakan array data dari Arduino Mega ke variabel objek.
         """
         if arr is not None and len(arr) >= 17:
-            # Contoh pemetaan (Silakan sesuaikan dengan urutan di STM32)
-            
-            # 1. Ambil Offset di pembacaan pertama
+            # 1. Ambil Offset di pembacaan pertama untuk Kompas
             if self.switch == 0:
                 self.temp_kompas = arr[0]
                 self.switch = 1
@@ -121,32 +124,26 @@ class SensorData:
                 
             # 4. Simpan hasil akhir
             self.kompas = sudut_relatif
-            self.kompas2      = arr[9]
-            self.ultrasonic_depan   = arr[1]
-    
-            self.ultrasonic_kiri    = arr[2]
-            self.ultrasonic_kanan = arr[3]
-            self.ultrasonic_belakang = arr[4]
-
-            self.tombol_start = arr[5]
-            self.tombol_reset = arr[6]
-
-            self.proxi_belakang  = arr[7]
-            self.proxi_depan     = arr[8] 
-
             
+            # Pemetaan sensor ultrasonik utama
+            self.ultrasonic_depan    = arr[1]  # S4 (Depan)
+            self.ultrasonic_kiri     = arr[2]  # S7 (Kiri via UART)
+            self.ultrasonic_kanan    = arr[3]  # S2 (Kanan)
+            self.ultrasonic_belakang = arr[4]  # S5 (Belakang)
 
-            self.limit_kanan_capit   = arr[9]
-            self.limit_capitBuka      = arr[10]
-            self.limit_capitJepit      = arr[11]
-            self.proxi_depan1      = arr[12]
-            
-            self.kompas2      = arr[13]
-            
-            self.kompas3      = arr[12]
-            self.kfs_terdeteksi = arr[13]
+            # Tombol data dari Nano
+            self.tombol_start = arr[5]  # Nano_A
+            self.tombol_reset = arr[6]  # Nano_B
 
-            self.sensor_kfs_depan = arr[14]
+            # Sensor tambahan baru
+            self.ultrasonic_bawah_depan    = arr[7]  # S3 (Bawah Depan)
+            self.ultrasonic_bawah_tengah   = arr[8]  # S1 (Bawah Tengah)
+            self.ultrasonic_bawah_belakang = arr[9]  # S6 (Bawah Belakang)
+            self.pitch_kompas              = arr[10] # CMPS Pitch
+
+            # Backward compatibility / Cadangan
+            self.kompas2 = arr[10] # simpan pitch ke kompas2
+            self.kompas3 = arr[0]
             
 
 
@@ -154,42 +151,76 @@ class SensorData:
 class MotorCommand:
     def __init__(self):
         # 6 Motor Driver
-        self.m1_pwm = 0      # data 0
-        self.m2_pwm = 0      # data 1
-        self.m3_pwm = 0      # data 2
-        self.m4_pwm = 0      # data 3
-        self.m5_pwm = 0      # data 4
-        self.m6_pwm = 0      # data 5
+        self.m0_pwm = 0      # FR (index 2)
+        self.m1_pwm = 0      # FL (index 3)
+        self.m2_pwm = 0      # BR (index 4)
+        self.m3_pwm = 0      # BL (index 5)
+        
+        # 2 Motor Power Window (index 0 & 1)
+        self.mDorong1 = 0    # PW Kanan (index 0)
+        self.mDorong2 = 0    # PW Kiri (index 1)
 
-        # 2 Motor Relay (data mDorong1 & mDorong2 pindah ke PW relay)
-        self.mDorong1 = 0    # data 6
-        self.mDorong2 = 0    # data 7
+        # PCA Motor
+        self.pca_motor = 0   # index 6
 
-        self.pwLogic = 0     # data 8
+        # Relays
+        self.CapitTombakJepit = 0     # index 7 (Relay 1 - pin 40)
+        self.CapitTombakNaikTurun = 0 # index 8 (Relay 2 - pin 42)
+        self.relayCapitKFSJepit = 0   # index 9 (Relay 3 - pin 36)
+        self.relayCapitKFSAngkat = 0  # index 9 (Relay 3 - pin 36)
 
-        # Relay tambahan (pin 40 & pin 42)
-        self.CapitTombakJepit = 0 # data 9
-        self.CapitTombakNaikTurun = 0 # data 10
-
-        # Deprecated / Dummy variables to maintain backward compatibility with other scripts
-        self.relayCapitKFSAngkat = 0
-        self.relayCapitKFSJepit = 0
+        # Backward compatibility placeholders
+        self.pwLogic = 0
+        self.m4_pwm = 0
+        self.m5_pwm = 0
+        self.m6_pwm = 0
+        self.capit_jepit = 0
 
     def get_array_output(self):
         """
-        Mengemas variabel menjadi array[11] untuk dikirim ke Arduino Due.
+        Mengemas variabel menjadi array[15] untuk dikirim ke Arduino Mega/Due.
+        Sesuai dengan protokol Output.ino:
+        - index 0: PW Kanan (M0)
+        - index 1: PW Kiri (M1)
+        - index 2: FR (M2)
+        - index 3: FL (M3)
+        - index 4: BR (M4)
+        - index 5: BL (M5)
+        - index 6: PCA Motor
+        - index 7: Relay 1 (pin 40)
+        - index 8: Relay 2 (pin 42)
+        - index 9: Relay 3 (pin 36)
+        - index 10-14: Unused
         """
+        # Konversi perintah PW dari biner (1 / -1) ke PWM (255 / -255) jika diperlukan
+        pw_r = self.mDorong1
+        if pw_r == 1: pw_r = 255
+        elif pw_r == -1: pw_r = -255
+
+        pw_l = self.mDorong2
+        if pw_l == 1: pw_l = 255
+        elif pw_l == -1: pw_l = -255
+
+        # Relay 3 aktif jika salah satu dari KFS Capit jepit/angkat bernilai 1
+        r3 = 1 if (self.relayCapitKFSJepit == 1 or self.relayCapitKFSAngkat == 1) else 0
+
         arr = [
-            self.m1_pwm, self.m2_pwm, self.m3_pwm, 
-            self.m4_pwm, self.m5_pwm, self.m6_pwm,
-            self.mDorong1, self.mDorong2,
-            self.pwLogic,
-            self.CapitTombakJepit, self.CapitTombakNaikTurun,
-            self.relayCapitKFSAngkat, self.relayCapitKFSJepit,  
-            0,
-            0
+            int(pw_r),                            # index 0 (PW Kanan / M0)
+            int(pw_l),                            # index 1 (PW Kiri / M1)
+            int(self.m0_pwm),                     # index 2 (FR / M2)
+            int(self.m1_pwm),                     # index 3 (FL / M3)
+            int(self.m2_pwm),                     # index 4 (BR / M4)
+            int(self.m3_pwm),                     # index 5 (BL / M5)
+            int(self.pca_motor),                  # index 6 (PCA Motor)
+            int(self.CapitTombakJepit),           # index 7 (Relay 1 - pin 40)
+            int(self.CapitTombakNaikTurun),       # index 8 (Relay 2 - pin 42)
+            int(r3),                              # index 9 (Relay 3 - pin 36)
+            0,                                    # index 10 (Unused)
+            0,                                    # index 11 (Unused)
+            0,                                    # index 12 (Unused)
+            0,                                    # index 13 (Unused)
+            0                                     # index 14 (Unused)
         ]
-        
         return arr
 
 
@@ -205,9 +236,9 @@ class Robot:
         self.OutputTerhubung = False
 
         self.ROBOT_MAIN_STATE = "STANDBY"
-        self.targetJarakKanan = 8 # JARAK AWAL DI KANAN
-        self.targetJarakBelakang = 15
+        self.config = ConfigManager('config.json')
+        self.targetJarakKanan = self.config.data.get("umum", {}).get("target_jarak_kanan_awal", 8) # JARAK AWAL DI KANAN
+        self.targetJarakBelakang = self.config.data.get("umum", {}).get("target_jarak_belakang_awal", 15)
 
         self.totalNaik = 0
-        self.config = ConfigManager('config.json')
         
