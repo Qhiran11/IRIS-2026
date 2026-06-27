@@ -32,8 +32,8 @@ class GerakanDasar:
         self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=6.0) 
         
         self.delay = NonBlockingDelay()
-        self.base_speed = 85 
-        self.max_pwm = 120   
+        self.base_speed = 45 
+        self.max_pwm = 50  
         self.target_angle = 0
         self.waktu_patokan = 0
 

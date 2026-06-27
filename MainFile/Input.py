@@ -52,68 +52,47 @@ class SensorReader:
             print("[RECOVERY] Gagal terhubung ulang. Cek fisik kabel USB Anda!")
     
     def baca_data(self):
-        """
-        Membaca paket 17 data int16 (Total 39 byte).
-        Struktur Paket: [AA 55] [34 byte data] [CRC] [0D 0A]
-        
-        Pemetaan data payload (17 int16):
-        - index 0: cmpsHeading (Kompas)
-        - index 1: S4 (Depan)
-        - index 2: S7 (Kiri via UART)
-        - index 3: S2 (Kanan)
-        - index 4: S5 (Belakang)
-        - index 5: tombol_start (Nano_A)
-        - index 6: tombol_reset (Nano_B)
-        - index 7: S3 (Bawah Depan)
-        - index 8: S1 (Bawah Tengah)
-        - index 9: S6 (Bawah Belakang)
-        - index 10: cmpsPitch (Pitch Kompas)
-        - index 11-16: Unused (Cadangan)
-        """
         if not self.ser or not self.ser.is_open:
             return None 
 
-        # Cek apakah terjadi Freeze (Tidak ada data valid selama lebih dari 1.5 detik)
         if time.time() - self.last_data_time > 1.5:
-            self.trigger_koneksi_ulang()  # <--- Pemanggilan fungsi yang baru
+            self.trigger_koneksi_ulang()
             return None
 
+        latest_payload = None # Menyimpan data terbaru
+
         try:
+            # Kuras seluruh buffer serial dan hanya ambil data paling baru
             while self.ser.in_waiting >= 39:
-                # 1. Sinkronisasi Header 1 (0xAA)
                 if self.ser.read(1) == b'\xAA':
-                    # 2. Sinkronisasi Header 2 (0x55)
                     if self.ser.read(1) == b'\x55':
-                        # 3. Baca sisa paket (37 byte)
                         packet = self.ser.read(37)
-                        
                         if len(packet) == 37:
                             data_payload = packet[:34]
                             received_crc = packet[34]
                             footer = packet[35:37]
                             
-                            # 4. Validasi Footer
                             if footer == b'\x0D\x0A':
-                                
-                                # 5. Hitung ulang CRC
                                 calc_crc = 0
                                 for b in data_payload:
                                     calc_crc ^= b
                                     
-                                # 6. Validasi CRC
                                 if calc_crc == received_crc:
-                                    
-                                    # UPDATE WAKTU TRACKER: Data sukses terbaca, berarti Mega tidak freeze!
-                                    self.last_data_time = time.time() 
-                                    
-                                    # 7. Ekstrak data
-                                    decoded_data = struct.unpack('<17h', data_payload)
-                                    return list(decoded_data)
-        except Exception:
-            pass
+                                    latest_payload = data_payload # Simpan yang paling baru
+
+            # Hanya return data jika berhasil mendapatkan paket tervalid paling akhir
+            if latest_payload is not None:
+                self.last_data_time = time.time() 
+                decoded_data = struct.unpack('<17h', latest_payload)
+                return list(decoded_data)
+                
+        except Exception as e:
+            print(f"[INPUT] Error membaca serial: {e}")
             
         return None
 
+    
+    
     def close(self):
         """Menutup port serial dengan aman."""
         if self.ser:

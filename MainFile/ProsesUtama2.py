@@ -118,16 +118,17 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
-                    gerak.target_angle = 90
+                    gerak.target_angle = 0
                     nama_gerakan = robot.config.data.get("umum", {}).get("gerak_dasar", "stop")
-                    # if hasattr(gerak, nama_gerakan):
-                    #     getattr(gerak, nama_gerakan)(robot)
-                    # else:
-                    #     gerak.stop(robot)
-                    gerak.hadap_sudut(robot, now)
+                    if hasattr(gerak, nama_gerakan):
+                        getattr(gerak, nama_gerakan)(robot)
+                    else:
+                        gerak.stop(robot)
+                    # gerak.hadap_sudut(robot, now)
+                    robot.motor.mDorong1 = 200 # => pw belakang, postif naik, negatif turun
+                    robot.motor.mDorong2 = 200 # => pw depan,  postif naik, negatif turun
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
-                    # print(robot.sensor.tombol_start, robot.sensor.tombol_reset)
                     # robot.motor.CapitTombakNaikTurun = 1
                     # robot.motor.relayCapitKFSJepit = 0
                     # LOGIKA: Tahan di sini hingga tombol start ditekan
@@ -255,7 +256,6 @@ def main():
                 if is_running:
                     # gerak.maju(robot)
                     data_keluar = robot.motor.get_array_output()
-                    
                     
                     writer.kirim_data(data_keluar) 
 

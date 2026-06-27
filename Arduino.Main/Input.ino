@@ -36,7 +36,7 @@ float jarakS7 = -1.0;
 // =======================================================
 // FUNGSI CMPS12 (I2C)
 // =======================================================
-void readCMPS12() {
+int readCMPS12() {
   Wire.beginTransmission(CMPS12_ADDRESS);
   Wire.write(2); // Mulai dari register 2 (Bearing High)
   Wire.endTransmission();
@@ -49,6 +49,7 @@ void readCMPS12() {
     while(Wire.available()) {
       Wire.read();
     }
+    return cmpsHeading;
   }
 }
 
@@ -157,6 +158,7 @@ void setup() {
   // Setup I2C untuk CMPS12
   Wire.begin();
   Wire.setClock(400000); // I2C Fast Mode
+  readCMPS12();
 
   for (int k = 0; k < NUM_TARGET_SENSORS; k++) {
     pinMode(trigPins[k], OUTPUT);
@@ -214,7 +216,7 @@ void loop() {
     lastComm = currentMillis;
 
     // Masukkan data ke array untuk dikirim (17 elemen)
-    data_kirim[0] = cmpsHeading;
+    data_kirim[0] = readCMPS12();
     data_kirim[1] = jarak_filter[3]; // S4 (Depan)
     data_kirim[2] = (int16_t)jarakS7; // S7 (Kiri) - UART
     data_kirim[3] = jarak_filter[1]; // S2 (Kanan)
