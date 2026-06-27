@@ -14,8 +14,8 @@ class SensorReader:
     def connect(self):
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
-            print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}")
-            self.last_data_time = time.time() + 2.0 # Beri toleransi waktu booting Arduino Mega (2 detik)
+            print(f"[INPUT] Berhasil terhubung ke ARDUINO MEGA di port {self.port}. Menunggu data (toleransi boot 4 detik)...")
+            self.last_data_time = time.time() + 4.0 # Beri toleransi waktu booting Arduino Mega (4 detik)
             return True
         except Exception as e:
             print(f"[INPUT] Gagal terhubung ke ARDUINO MEGA: {e}")

@@ -46,7 +46,17 @@ class ArduinoDueWriter:
                 return True
                 
         except Exception as e:
-            self.ser.close() 
+            if self.ser and self.ser.is_open:
+                self.ser.close() 
             print(f"[OUTPUT] Koneksi terputus mendadak: {e}") # Tambahkan log error
             return False
+
+    def close(self):
+        """Menutup port serial dengan aman."""
+        if self.ser:
+            try:
+                self.ser.close()
+                print("[OUTPUT] Port serial berhasil ditutup.")
+            except Exception as e:
+                print(f"[OUTPUT] Gagal menutup port serial: {e}")
         

@@ -116,14 +116,30 @@ float readSensorS7_UART() {
   return -1.0; 
 }
 
+// FUNGSI NON-BLOCKING PARSER DATA DARI NANO
 void readDataFromNano() {
+  static char rxBuf[32];
+  static int rxIdx = 0;
+  
   while (Serial2.available() > 0) {
-    String incomingData = Serial2.readStringUntil('\n'); 
-    int commaIndex = incomingData.indexOf(',');
-    
-    if (commaIndex > 0) {
-      nanoDataA = incomingData.substring(0, commaIndex).toInt();
-      nanoDataB = incomingData.substring(commaIndex + 1).toInt();
+    char c = Serial2.read();
+    if (c == '\n' || c == '\r') {
+      if (rxIdx > 0) {
+        rxBuf[rxIdx] = '\0'; // Null-terminate string
+        char* comma = strchr(rxBuf, ',');
+        if (comma != NULL) {
+          *comma = '\0'; // Membagi string di posisi koma
+          nanoDataA = atoi(rxBuf);
+          nanoDataB = atoi(comma + 1);
+        }
+        rxIdx = 0; // Reset index buffer
+      }
+    } else {
+      if (rxIdx < 30) {
+        rxBuf[rxIdx++] = c;
+      } else {
+        rxIdx = 0; // Reset buffer jika overflow (data tidak valid)
+      }
     }
   }
 }
@@ -178,7 +194,7 @@ void loop() {
     delayMicroseconds(10);
     digitalWrite(activeTrig, LOW);
 
-    long duration = pulseIn(activeEcho, HIGH, 25000); // Batasi timeout agar tidak memblokir lama
+    long duration = pulseIn(activeEcho, HIGH, 250000); // Batasi timeout agar tidak memblokir lama
     int jarak = duration * 0.0343 / 2;
     
     int jarakValid = getRobustDistance(current_sensor, jarak);

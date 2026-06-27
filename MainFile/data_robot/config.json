@@ -3,7 +3,7 @@
         "jeda_transisi_default": 0.01,
         "target_jarak_kanan_awal": 8,
         "target_jarak_belakang_awal": 15,
-        "gerak_dasar" : "maju"
+        "gerak_dasar": "stop"
     },
     "gerakan_kfs": {
         "maju": {
@@ -41,7 +41,14 @@
         }
     },
     "rakit_senjata": {
-        "titik_referensi_tombak": [11, 31, 51, 71, 91, 111],
+        "titik_referensi_tombak": [
+            11,
+            31,
+            51,
+            71,
+            91,
+            111
+        ],
         "mendekat": {
             "base_speed": 100,
             "max_pwm": 180,

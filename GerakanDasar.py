@@ -86,15 +86,15 @@ class GerakanDasar:
                           -self.base_speed + kor, -self.base_speed + kor, 
                           -self.base_speed - kor, -self.base_speed - kor)
 
-    def kanan(self, robot): # Strafe Kanan
-        robot.state.gerak_dasar_aktif = "KANAN"
+    def kiri(self, robot): # Strafe Kiri
+        robot.state.gerak_dasar_aktif = "KIRI"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
                           -self.base_speed + kor,  self.base_speed + kor, 
                            self.base_speed - kor, -self.base_speed - kor)
 
-    def kiri(self, robot): # Strafe Kiri
-        robot.state.gerak_dasar_aktif = "KIRI"
+    def kanan(self, robot): # Strafe Kanan
+        robot.state.gerak_dasar_aktif = "KANAN"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot,  
                            self.base_speed + kor, -self.base_speed + kor, 
@@ -290,8 +290,8 @@ class GerakanDasar:
         
         # Master Template (Acuan Utama)
         self._apply_motor(robot, 
-                          kor, kor,  
-                          -kor, -kor) 
+                          -kor, -kor,  
+                          kor, kor) 
         if (robot.sensor.kompas >= self.target_angle - 1 and robot.sensor.kompas <= self.target_angle + 1): # -90 derajat ± 1 
             self.stop(robot)
             if getattr(self, 'waktu_patokan', None) is None:
