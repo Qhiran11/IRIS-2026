@@ -93,6 +93,7 @@ class RakitSenjata:
     def jalankan(self, robot, gerak, now):
         jarak_belakang  = robot.sensor.ultrasonic_belakang
         jarak_kanan     = robot.sensor.ultrasonic_kanan
+        jarak_bawah_tengah = robot.sensor.ultrasonic_bawah_tengah
         target_jarak = robot.targetJarakBelakang
 
         # ---------------------------------------------------------
@@ -107,10 +108,17 @@ class RakitSenjata:
                 print(f"[SENJATA] Masuk ke state: {robot.state.rakit_state}")
 
         elif robot.state.rakit_state == "IDLE":
-            print("[SENJATA] Memulai sequence RAKIT...")
             robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
             robot.state.rakit_transition_start = now
-            self.transition_to("PERSIAPAN", now, robot, gerak)
+            if gerak.turun_ke_titk(robot, 4):
+                self.transition_to("PENYEIMBANGAN", now, robot, gerak)
+        
+        elif robot.state.rakit_state == "PENYEIMBANGAN":
+            gerak.penyeimbang(robot, now)
+            if (now - robot.state.rakit_transition_start > 0.1): # Delay stabilisasi
+                print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
+                self.transition_to("PERSIAPAN", now, robot, gerak)
+        
 
         elif robot.state.rakit_state == "PERSIAPAN":
             gerak.maju(robot)
@@ -139,7 +147,13 @@ class RakitSenjata:
             gerak.max_pwm = cfg_geser.get("max_pwm", 65)
             robot.motor.CapitTombakNaikTurun = 1
             if gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan, now):
-                self.transition_to("MULAI_JEPIT", now, robot, gerak)
+                self.transition_to("NAIK_paskan", now, robot, gerak)
+        
+        elif robot.state.rakit_state == "NAIK_paskan":
+            if gerak.turun_ke_titk(robot,30):
+                # hitung delay 0.1 detik
+                if (now - robot.state.rakit_transition_start > 0.1):
+                    self.transition_to("MULAI_JEPIT", now, robot, gerak)
 
         elif robot.state.rakit_state == "MULAI_JEPIT":
             cfg_jepit = robot.config.data.get("rakit_senjata", {}).get("mulai_jepit", {})

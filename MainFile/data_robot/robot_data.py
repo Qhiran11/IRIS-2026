@@ -53,6 +53,8 @@ class SystemState:
 class SensorData:
     def __init__(self):
         self.temp_kompas = 0
+        self.temp_pitch = 0  # [BARU] Variabel untuk menyimpan kalibrasi awal pitch
+        
         self.kompas = 0
         # sensor ultrasonic
         self.ultrasonic_depan = 0
@@ -77,9 +79,6 @@ class SensorData:
         # Di dalam class Sensor atau RobotData Anda
         self.data_qr = ""
         
-
-        
-        
         # --- DATA BINARY (70% 0 atau 1) ---
         self.kfs_terdeteksi = False
         self.limit_kanan_capit = 0
@@ -87,17 +86,12 @@ class SensorData:
             
         self.limit_capitBuka      = 1
         self.limit_capitJepit      = 1
-
-        
-
         
         # Data Cadangan
         self.kompas2 = 0
         self.kompas3 = 0
         
-
         self.kfs_terdeteksi = 0
-
         self.sensor_kfs_depan = 0
         self.posisi_di_hutan = 0
         
@@ -107,23 +101,40 @@ class SensorData:
         Memetakan array data dari Arduino Mega ke variabel objek.
         """
         if arr is not None and len(arr) >= 17:
-            # 1. Ambil Offset di pembacaan pertama untuk Kompas
+            # 1. Ambil Offset di pembacaan pertama untuk Kompas dan Pitch
             if self.switch == 0:
                 self.temp_kompas = arr[0]
+                self.temp_pitch = arr[10]  # [BARU] Simpan kalibrasi awal pitch
                 self.switch = 1
                 print(f"[KALIBRASI] Arah 0 diset pada: {self.temp_kompas} derajat")
+                print(f"[KALIBRASI] Pitch 0 diset pada: {self.temp_pitch} derajat") # Log tambahan
             
-            # 2. Hitung selisih relatif
+            # ---------------------------------------------------------
+            # 2a. Hitung selisih relatif dan NORMALISASI KOMPAS
+            # ---------------------------------------------------------
             sudut_relatif = arr[0] - self.temp_kompas
             
-            # 3. NORMALISASI (-180 hingga 180)
+            # NORMALISASI (-180 hingga 180)
             if sudut_relatif > 180:
                 sudut_relatif -= 360
             elif sudut_relatif < -180:
                 sudut_relatif += 360
                 
-            # 4. Simpan hasil akhir
             self.kompas = sudut_relatif
+            
+            # ---------------------------------------------------------
+            # 2b. Hitung selisih relatif dan NORMALISASI PITCH [BARU]
+            # ---------------------------------------------------------
+            pitch_relatif = arr[10] - self.temp_pitch
+            
+            # NORMALISASI (-180 hingga 180)
+            if pitch_relatif > 180:
+                pitch_relatif -= 360
+            elif pitch_relatif < -180:
+                pitch_relatif += 360
+            
+            self.pitch_kompas = pitch_relatif
+            
             
             # Pemetaan sensor ultrasonik utama
             self.ultrasonic_depan    = arr[1]  # S4 (Depan)
@@ -132,20 +143,19 @@ class SensorData:
             self.ultrasonic_belakang = arr[4]  # S5 (Belakang)
 
             # Tombol data dari Nano
-            self.tombol_start = arr[5]  # Nano_A
-            self.tombol_reset = arr[6]  # Nano_B
+            self.tombol_start = arr[6]  # Nano_A
+            self.tombol_reset = arr[5]  # Nano_B
 
             # Sensor tambahan baru
             self.ultrasonic_bawah_depan    = arr[7]  # S3 (Bawah Depan)
             self.ultrasonic_bawah_tengah   = arr[8]  # S1 (Bawah Tengah)
             self.ultrasonic_bawah_belakang = arr[9]  # S6 (Bawah Belakang)
-            self.pitch_kompas              = arr[10] # CMPS Pitch
+            # self.pitch_kompas = arr[10]  # <--- Ini dihapus/diganti dengan logika di atas
 
             # Backward compatibility / Cadangan
-            self.kompas2 = arr[10] # simpan pitch ke kompas2
-            self.kompas3 = arr[0]
-            
-
+            # Catatan: Jika kompas2 juga butuh dinormalisasi, Anda bisa menggantinya dengan self.pitch_kompas
+            self.kompas2 = arr[10] # simpan pitch ke kompas2 (Raw / Mentah)
+            self.kompas3 = arr[0]  # (Raw / Mentah)
 
 
 class MotorCommand:

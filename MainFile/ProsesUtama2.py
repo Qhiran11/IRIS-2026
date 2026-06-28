@@ -120,13 +120,15 @@ def main():
                 if not is_running:
                     gerak.target_angle = 0
                     nama_gerakan = robot.config.data.get("umum", {}).get("gerak_dasar", "stop")
-                    if hasattr(gerak, nama_gerakan):
-                        getattr(gerak, nama_gerakan)(robot)
-                    else:
-                        gerak.stop(robot)
-                    # gerak.hadap_sudut(robot, now)
-                    robot.motor.mDorong1 = 200 # => pw belakang, postif naik, negatif turun
-                    robot.motor.mDorong2 = 200 # => pw depan,  postif naik, negatif turun
+                    # if hasattr(gerak, nama_gerakan):
+                    #     getattr(gerak, nama_gerakan)(robot)
+                    # else:
+                    gerak.stop(robot)
+                    # gerak.mundur(robot)
+                    # robot.motor.mDorong1 = -165 # => pw belakang, postif naik, negatif turun
+                    # robot.motor.mDorong2 = -255 # => pw depan,  postif naik, negatif turun
+                    # gerak.penyeimbang(robot, now)
+                    # gerak.turun_ke_titk(robot, 30)
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
                     # robot.motor.CapitTombakNaikTurun = 1

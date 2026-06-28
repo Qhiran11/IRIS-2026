@@ -30,10 +30,16 @@ class GerakanDasar:
         self.pid_kompas = PIDController(Kp=5.0, Ki=0.001, Kd=5.0)
         self.pid_kompas2 = PIDController(Kp=5.0, Ki=0.001, Kd=5.0)
         self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=6.0) 
+
+        self.pid_tinggi = PIDController(Kp=30.0, Ki=0.01, Kd=1.0)
+        self.pid_pitch = PIDController(Kp=3.0, Ki=0.01, Kd=1.0)
         
+        # Tentukan kecepatan maksimal motor (misalnya 255 atau 155 sesuai spesifikasi motor/driver)
+        self.base_speed = 100  # Batas minimal PWM saat robot butuh koreksi
+        self.max_pwm = 250 
+
         self.delay = NonBlockingDelay()
-        self.base_speed = 45 
-        self.max_pwm = 50  
+         
         self.target_angle = 0
         self.waktu_patokan = 0
 
@@ -60,13 +66,94 @@ class GerakanDasar:
         robot.motor.m3_pwm = BL_val
         robot.motor.m2_pwm = BR_val
 
+    def penyeimbang(self, robot, now):
+        pitch_sekarang = robot.sensor.pitch_kompas
+
+        if pitch_sekarang > 1:
+            robot.motor.mDorong1 = -155
+            robot.motor.mDorong2 = 35
+        elif pitch_sekarang < -1:
+            robot.motor.mDorong1 = 35
+            robot.motor.mDorong2 = -155
+        elif pitch_sekarang == 1 or pitch_sekarang == -1 or pitch_sekarang == 0:
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
+    
+    
+    
+    def turun_ke_titk(self, robot, target_jarak):
+        jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
+        pitch_sekarang = robot.sensor.pitch_kompas
+        
+        # 1. Hitung error jarak (untuk mengetahui kapan harus stop)
+        error_jarak = jarak_sekarang - target_jarak
+        
+        # 2. Toleransi: Berhenti jika jarak sudah pas (+- 1cm) DAN posisi sudah lurus (+- 1 derajat)
+        if abs(error_jarak) <= 1 and abs(pitch_sekarang) <= 1:
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
+            self.pid_tinggi.reset()
+            self.pid_pitch.reset() # Reset juga integral pitch
+            return True
+            
+        # 3. Hitung PID Ketinggian (Menghasilkan Base PWM)
+        base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
+        
+        # 4. Hitung PID Penyeimbang (Menghasilkan Koreksi Pitch)
+        # Target pitch selalu 0 (lurus sejajar tanah)
+        koreksi_pitch = self.pid_pitch.compute(target=0, current=pitch_sekarang)
+        
+        # =========================================================
+        # 5. PID MIXING (Perpaduan Tinggi dan Keseimbangan)
+        # =========================================================
+        # pwm_belakang dikurangi koreksi (jika pitch positif, belakang makin negatif / makin narik ke atas)
+        # pwm_depan ditambah koreksi (jika pitch positif, depan makin positif / makin meluncur ke bawah)
+        pwm_belakang = base_pwm - koreksi_pitch
+        pwm_depan = base_pwm + koreksi_pitch
+        
+        # 6. ASYMMETRICAL CLAMPING (Membatasi kecepatan naik & turun)
+        batas_maksimal_turun = 100    # Turun lambat dibantu gravitasi
+        batas_maksimal_naik = -255   # Naik kuat melawan gravitasi
+        batas_minimal_turun = 30     # Angka terkecil agar motor mau turun
+        batas_minimal_naik = -130     # Angka terkecil agar motor kuat ngangkat naik
+        
+        def batasi_pwm(pwm_motor):
+            # 1. Clamping Maksimal
+            if pwm_motor > batas_maksimal_turun:
+                pwm_motor = batas_maksimal_turun
+            elif pwm_motor < batas_maksimal_naik:
+                pwm_motor = batas_maksimal_naik
+                
+            # 2. Deadband Compensation (Mencegah macet saat error kecil)
+            # Jika PID menyuruh TURUN (positif) tapi PWM terlalu kecil
+            if 0 < pwm_motor < batas_minimal_turun:
+                pwm_motor = batas_minimal_turun
+                
+            # Jika PID menyuruh NAIK (negatif) tapi PWM terlalu kecil (kurang kuat)
+            elif 0 > pwm_motor > batas_minimal_naik:
+                pwm_motor = batas_minimal_naik
+                
+            return int(pwm_motor)
+
+        # 7. Aplikasikan ke motor
+        robot.motor.mDorong1 = batasi_pwm(pwm_belakang)
+        robot.motor.mDorong2 = batasi_pwm(pwm_depan)
+        return False
+               
+        
+            
+    
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
         self._apply_motor(robot, 0, 0, 0, 0)
-        
+        self.base_speed = 100  # Batas minimal PWM saat robot butuh koreksi
+        self.max_pwm = 250 
+        robot.motor.mDorong1 = 0
+        robot.motor.mDorong2 = 0
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
         self.pid_jarak.reset()
+        
 
     # =====================================================================
     # 10 GERAKAN UTAMA (MECANUM KINEMATICS) - KOREKSI DISELARASKAN DENGAN HADAP SUDUT
@@ -76,44 +163,48 @@ class GerakanDasar:
         robot.state.gerak_dasar_aktif = "MAJU"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          self.base_speed + kor, self.base_speed + kor, 
-                          self.base_speed - kor, self.base_speed - kor)
+                          self.base_speed - kor, self.base_speed - kor, 
+                          self.base_speed + kor, self.base_speed + kor)
+        
 
     def mundur(self, robot):
         robot.state.gerak_dasar_aktif = "MUNDUR"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          -self.base_speed + kor, -self.base_speed + kor, 
-                          -self.base_speed - kor, -self.base_speed - kor)
+                          -self.base_speed - kor, -self.base_speed - kor, 
+                          -self.base_speed + kor, -self.base_speed + kor)
+        
 
     def kiri(self, robot): # Strafe Kiri
         robot.state.gerak_dasar_aktif = "KIRI"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          -self.base_speed + kor,  self.base_speed + kor, 
-                           self.base_speed - kor, -self.base_speed - kor)
+                          -self.base_speed - kor,  self.base_speed - kor, 
+                           self.base_speed + kor, -self.base_speed + kor)
+        
 
     def kanan(self, robot): # Strafe Kanan
         robot.state.gerak_dasar_aktif = "KANAN"
         kor = self.pid_kompas.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot,  
-                           self.base_speed + kor, -self.base_speed + kor, 
-                          -self.base_speed - kor,  self.base_speed - kor)
+                           self.base_speed - kor, -self.base_speed - kor, 
+                          -self.base_speed + kor,  self.base_speed + kor)
+        
 
     # DIAGONAL MOVEMENT =======================================================
     def maju_diagonal_kanan(self, robot):
         robot.state.gerak_dasar_aktif = "maju diagonal kanan"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          0 + kor, self.base_speed + kor, 
-                          self.base_speed - kor, 0 - kor)
+                          0 - kor, self.base_speed - kor, 
+                          self.base_speed + kor, 0 + kor)
 
     def maju_diagonal_kiri(self, robot):
         robot.state.gerak_dasar_aktif = "maju diagonal kiri"
         kor = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         self._apply_motor(robot, 
-                          self.base_speed + kor, 0 + kor, 
-                          0 - kor, self.base_speed - kor)
+                          self.base_speed - kor, 0 - kor, 
+                          0 + kor, self.base_speed + kor)
 
     def mundur_diagonal_kanan(self, robot):
         robot.state.gerak_dasar_aktif = "mundur diagonal kanan"
@@ -157,7 +248,6 @@ class GerakanDasar:
     
     def maju_ke_titik(self, robot, target_jarak, now):
         robot.state.gerak_dasar_aktif = "MAJU KE TITIK"
-        # Menggunakan pid_kompas2 agar selaras dengan fungsi maju & mundur_ke_titik
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         jarak_sekarang = robot.sensor.ultrasonic_depan
 
@@ -204,8 +294,8 @@ class GerakanDasar:
 
         speed_jarak = max(-self.base_speed, min(self.base_speed, speed_jarak))
         self._apply_motor(robot, 
-                          -speed_jarak + kor_sudut, -speed_jarak + kor_sudut, 
-                          -speed_jarak - kor_sudut, -speed_jarak - kor_sudut)
+                          -speed_jarak - kor_sudut, -speed_jarak - kor_sudut, 
+                          -speed_jarak + kor_sudut, -speed_jarak + kor_sudut)
         
         if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
             self.stop(robot)
@@ -214,6 +304,9 @@ class GerakanDasar:
             if now - self.waktu_patokan > 0.1:
                 self.waktu_patokan = None  
                 return True
+        elif jarak_sekarang == 0 or jarak_sekarang == -1:
+            self.mundur(robot)
+            self.waktu_patokan = None
         else:
             self.waktu_patokan = None
         return False    
@@ -232,8 +325,8 @@ class GerakanDasar:
         speed_geser = max(-self.base_speed, min(self.base_speed, speed_geser))
         
         self._apply_motor(robot, 
-                          -speed_geser + kor_sudut,  speed_geser + kor_sudut, 
-                           speed_geser - kor_sudut, -speed_geser - kor_sudut)
+                          -speed_geser - kor_sudut,  speed_geser - kor_sudut, 
+                           speed_geser + kor_sudut, -speed_geser + kor_sudut)
         if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
             self.stop(robot)
             if getattr(self, 'waktu_patokan', None) is None:
@@ -265,8 +358,8 @@ class GerakanDasar:
         
         # Eksekusi motor tetap berjalan untuk memastikan robot bisa berhenti (speed 0) saat ada noise
         self._apply_motor(robot, 
-                          speed_geser + kor_sudut,  -speed_geser + kor_sudut, 
-                         -speed_geser - kor_sudut,   speed_geser - kor_sudut)
+                          speed_geser - kor_sudut,  -speed_geser - kor_sudut, 
+                         -speed_geser + kor_sudut,   speed_geser + kor_sudut)
                           
         if target_jarak - 2 <= jarak_sekarang <= target_jarak + 2:
             self.stop(robot)
@@ -351,7 +444,13 @@ class GerakanDasar:
             self.hadap_sudut(robot, now)
             if self.target_angle - 1 <= robot.sensor.kompas <= self.target_angle + 1:
                 self.stop(robot)
+                self.stateReturn = "turunBody"
+        
+        elif self.stateReturn == "turunBody":
+            if self.turun_ke_titk(robot, 4):
+                self.stop(robot)
                 self.stateReturn = "MundurKetitik"
+
         elif self.stateReturn == "MundurKetitik":
             if self.mundur_ke_titik(robot, 10, now):
                 self.stop(robot)
