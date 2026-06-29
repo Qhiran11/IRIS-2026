@@ -137,10 +137,10 @@ def main():
                     # gerak.turun_roda2( robot)
                     # robot.motor.mDorong1 = -200
                     # gerak.naikTurunBiasa(robot, 14)
-                    gerak.base_speed = 60
-                    gerak.max_pwm = 80
+                    gerak.base_speed = 100
+                    gerak.max_pwm = 150
                     # gerak.geser_ke_titik_kanan(robot, 160, now)
-                    gerak.maju_ke_titik(robot, 40, now)
+                    gerak.maju_ke_titik(robot, 100, now)
                     
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
@@ -305,6 +305,8 @@ def main():
         print("\n[FAILSAFE] Terminal dihentikan paksa (Ctrl+C)!")
     except Exception as e:
         print(f"\n[FAILSAFE] Terjadi Error Sistem: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         print("[FAILSAFE] Mematikan semua motor...")
         gerak.stop(robot)

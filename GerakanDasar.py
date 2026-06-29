@@ -1,7 +1,6 @@
 import json
 import os
 import time
-from NonBlockingDelay import NonBlockingDelay
 
 
 class PIDController:
@@ -56,7 +55,7 @@ class GerakanDasar:
         # Base parameters
         self.base_speed = 100
         self.max_pwm = 250
-        self.delay = NonBlockingDelay()
+        
 
         self.target_angle = 0
         self.waktu_patokan = None
@@ -185,13 +184,16 @@ class GerakanDasar:
 
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
+        self.stop_motors(robot)
+        self.waktu_mulai_gerak = None
+
+    def stop_motors(self, robot):
         self._apply_motor(robot, 0, 0, 0, 0)
         robot.motor.mDorong1 = 0
         robot.motor.mDorong2 = 0
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
         self.pid_jarak.reset()
-        self.waktu_mulai_gerak = None
 
     # =========================================================================
     # SINKRONISASI GERAKAN MENUGU TITIK DENGAN AUTO-TUNING BERBASIS JSON
@@ -208,7 +210,7 @@ class GerakanDasar:
         abs_error = abs(jarak_sekarang - target_jarak)
 
         # Ambil batasan parameter dari data JSON
-        p = self.config_data["maju_ke_titik"]
+        p = self.config_data["auto_tuning_pid"]["maju_ke_titik"]
         dinamis_Kp = self._map_value(abs_error, 5, 30, p["kp_min"], p["kp_max"])
         dinamis_Ki = self._map_value(abs_error, 1, 10, p["ki_min"], p["ki_max"])
 
@@ -229,7 +231,7 @@ class GerakanDasar:
         )
 
         if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
-            self.stop(robot)
+            self.stop_motors(robot)
             if self.waktu_patokan is None:
                 self.waktu_patokan = now
             if now - self.waktu_patokan > 0.1:
@@ -240,14 +242,13 @@ class GerakanDasar:
 
                 # Logika Optimasi Otomatis (Contoh penyempurnaan adaptif)
                 if settle_time > 1.5:  # Jika terlalu lambat, naikkan Kp Max
-                    self.config_data["maju_ke_titik"]["kp_max"] = min(
+                    self.config_data["auto_tuning_pid"]["maju_ke_titik"]["kp_max"] = min(
                         12.0, p["kp_max"] + 0.2
                     )
                     self.save_config_json()
 
+                self.stop(robot)
                 self.waktu_patokan = None
-                self.pid_jarak.reset()
-                self.pid_kompas2.reset()
                 return True
         else:
             self.waktu_patokan = None
@@ -270,7 +271,7 @@ class GerakanDasar:
         self._manage_time_tracker("mundur_ke_titik", now)
         abs_error = abs(jarak_sekarang - target_jarak)
 
-        p = self.config_data["mundur_ke_titik"]
+        p = self.config_data["auto_tuning_pid"]["mundur_ke_titik"]
         dinamis_Kp = self._map_value(abs_error, 5, 30, p["kp_min"], p["kp_max"])
         dinamis_Ki = self._map_value(abs_error, 1, 10, p["ki_min"], p["ki_max"])
 
@@ -291,7 +292,7 @@ class GerakanDasar:
         )
 
         if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
-            self.stop(robot)
+            self.stop_motors(robot)
             if self.waktu_patokan is None:
                 self.waktu_patokan = now
             if now - self.waktu_patokan > 0.1:
@@ -301,14 +302,13 @@ class GerakanDasar:
                 )
 
                 if settle_time > 1.5:
-                    self.config_data["mundur_ke_titik"]["kp_max"] = min(
+                    self.config_data["auto_tuning_pid"]["mundur_ke_titik"]["kp_max"] = min(
                         12.0, p["kp_max"] + 0.2
                     )
                     self.save_config_json()
 
+                self.stop(robot)
                 self.waktu_patokan = None
-                self.pid_jarak.reset()
-                self.pid_kompas2.reset()
                 return True
         else:
             self.waktu_patokan = None
@@ -324,7 +324,7 @@ class GerakanDasar:
         self._manage_time_tracker("geser_ke_titik_kanan", now)
         abs_error = abs(jarak_sekarang - target_jarak)
 
-        p = self.config_data["geser_ke_titik_kanan"]
+        p = self.config_data["auto_tuning_pid"]["geser_ke_titik_kanan"]
         dinamis_Kp = self._map_value(abs_error, 5, 30, p["kp_min"], p["kp_max"])
         dinamis_Ki = self._map_value(abs_error, 1, 10, p["ki_min"], p["ki_max"])
 
@@ -345,7 +345,7 @@ class GerakanDasar:
         )
 
         if target_jarak - 2 <= jarak_sekarang <= target_jarak + 2:
-            self.stop(robot)
+            self.stop_motors(robot)
             if self.waktu_patokan is None:
                 self.waktu_patokan = now
             if now - self.waktu_patokan > 0.05:
@@ -355,14 +355,13 @@ class GerakanDasar:
                 )
 
                 if settle_time > 1.8:
-                    self.config_data["geser_ke_titik_kanan"]["kp_max"] = min(
+                    self.config_data["auto_tuning_pid"]["geser_ke_titik_kanan"]["kp_max"] = min(
                         10.0, p["kp_max"] + 0.3
                     )
                     self.save_config_json()
 
+                self.stop(robot)
                 self.waktu_patokan = None
-                self.pid_jarak.reset()
-                self.pid_kompas2.reset()
                 self.last_valid_jarak_kanan = None
                 return True
         else:
@@ -396,7 +395,7 @@ class GerakanDasar:
         self._manage_time_tracker("geser_ke_titik_kiri", now)
         abs_error = abs(jarak_sekarang - target_jarak)
 
-        p = self.config_data["geser_ke_titik_kiri"]
+        p = self.config_data["auto_tuning_pid"]["geser_ke_titik_kiri"]
         dinamis_Kp = self._map_value(abs_error, 5, 30, p["kp_min"], p["kp_max"])
         dinamis_Ki = self._map_value(abs_error, 1, 10, p["ki_min"], p["ki_max"])
 
@@ -417,7 +416,7 @@ class GerakanDasar:
         )
 
         if target_jarak - 2 <= jarak_sekarang <= target_jarak + 2:
-            self.stop(robot)
+            self.stop_motors(robot)
             if self.waktu_patokan is None:
                 self.waktu_patokan = now
             if now - self.waktu_patokan > 0.1:
@@ -427,14 +426,13 @@ class GerakanDasar:
                 )
 
                 if settle_time > 1.8:
-                    self.config_data["geser_ke_titik_kiri"]["kp_max"] = min(
+                    self.config_data["auto_tuning_pid"]["geser_ke_titik_kiri"]["kp_max"] = min(
                         15.0, p["kp_max"] + 0.3
                     )
                     self.save_config_json()
 
+                self.stop(robot)
                 self.waktu_patokan = None
-                self.pid_jarak.reset()
-                self.pid_kompas2.reset()
                 self.last_valid_jarak_kiri = None
                 return True
         else:
