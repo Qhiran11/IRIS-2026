@@ -137,10 +137,10 @@ def main():
                     # gerak.turun_roda2( robot)
                     # robot.motor.mDorong1 = -200
                     # gerak.naikTurunBiasa(robot, 14)
-                    gerak.base_speed = 100
-                    gerak.max_pwm = 150
+                    # gerak.base_speed = 80
+                    # gerak.max_pwm = 100
                     # gerak.geser_ke_titik_kanan(robot, 160, now)
-                    gerak.maju_ke_titik(robot, 100, now)
+                    gerak.maju_ke_titik(robot, 100, now, tun="on")
                     
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
