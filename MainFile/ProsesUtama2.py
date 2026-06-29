@@ -132,13 +132,16 @@ def main():
                     # robot.motor.mDorong1 = 255 # BELAKANG
                     # robot.motor.mDorong2 = 255 # DEPAN
                     # gerak.penyeimbang(robot, now)
-                    gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"))
+                    
+                    # gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"))
+                    # gerak.turun_roda2( robot)
+                    # robot.motor.mDorong1 = -200
                     # gerak.naikTurunBiasa(robot, 14)
-                    # gerak.mundur_ke_titik(robot, 40, now)
-                    # gerak.hadap_sudut(robot, now)
-
-                    # robot.motor.CapitTombakNaikTurun = 1
-                    # gerak.turun_ke_titk(robot, 30)
+                    gerak.base_speed = 60
+                    gerak.max_pwm = 80
+                    # gerak.geser_ke_titik_kanan(robot, 160, now)
+                    gerak.maju_ke_titik(robot, 40, now)
+                    
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
                     # robot.motor.CapitTombakNaikTurun = 1
@@ -193,8 +196,9 @@ def main():
                         gerak.stop(robot)
                         if (now - robot.state.main_then > 0.1):
                             # robot.state.main_state = "GO"
-                            # robot.state.main_state = "GOGO"
-                            robot.state.main_state = "NAIK"
+                            robot.state.main_state = "GOGO"
+                            # robot.state.main_state = "NAIK"
+                            robot.state.main_state = "TURUN"
                             
                             # robot.state.main_state = "AMBILKFS"
                             robot.state.main_then = now
@@ -208,6 +212,7 @@ def main():
                             is_running = False
                             
                     elif robot.state.main_state == "GOGO":
+                        
                         selesai = masukMainhua._proses_ke_tengah(robot, gerak, now)
                         if selesai:
                             robot.state.main_state = "NAIK"

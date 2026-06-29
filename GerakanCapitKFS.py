@@ -57,7 +57,7 @@ class GerakanCapitKFS:
         return False
 
     # ==========================================
-    # 2. KONTROL MAJU MUNDUR (2 Motor Stepper)
+    # 2.    ONTROL MAJU MUNDUR (2 Motor Stepper)
     # ==========================================
     def MajuMundur(self, robot, perintah):
 

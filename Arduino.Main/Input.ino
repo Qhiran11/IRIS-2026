@@ -2,7 +2,7 @@
 #include <avr/wdt.h>
 
 #define CMPS12_ADDRESS 0x60
-#define NUM_TARGET_SENSORS 6
+#define NUM_TARGET_SENSORS 7
 #define FILTER_SIZE 5
 #define MAX_DELTA_CM 15    
 #define MAX_REJECT_COUNT 3 
@@ -11,8 +11,8 @@
 // VARIABEL & PIN
 // =======================================================
 // S1(Bwh Tgh), S2(Kanan), S3(Bwh Dpn), S4(Depan), S5(Blkg), S6(Bwh Blkg)
-const int trigPins[NUM_TARGET_SENSORS] = {28, 32, 33, 36, 37, 41};
-const int echoPins[NUM_TARGET_SENSORS] = {30, 34, 31, 38, 35, 39};
+const int trigPins[NUM_TARGET_SENSORS] = {28, 32, 33, 36, 37, 41, 18};
+const int echoPins[NUM_TARGET_SENSORS] = {30, 34, 31, 38, 35, 39, 19};
 
 // Variabel untuk Filter Ultrasonik
 int history[NUM_TARGET_SENSORS][FILTER_SIZE]; 
@@ -100,22 +100,22 @@ int getRobustDistance(uint8_t idx, int newVal) {
 // =======================================================
 // FUNGSI SENSOR UART & KOMUNIKASI NANO
 // =======================================================
-float readSensorS7_UART() {
-  while(Serial1.available()) Serial1.read();
+// float readSensorS7_UART() {
+//   while(Serial1.available()) Serial1.read();
   
-  Serial1.write(0x55); 
+//   Serial1.write(0x55); 
   
-  unsigned long startWait = millis();
-  while(Serial1.available() < 2 && millis() - startWait < 30) {}
+//   unsigned long startWait = millis();
+//   while(Serial1.available() < 2 && millis() - startWait < 30) {}
   
-  if (Serial1.available() >= 2) {
-    byte highByte = Serial1.read();
-    byte lowByte  = Serial1.read();
-    int jarak_mm = (highByte * 256) + lowByte;
-    return jarak_mm / 10.0; 
-  }
-  return -1.0; 
-}
+//   if (Serial1.available() >= 2) {
+//     byte highByte = Serial1.read();
+//     byte lowByte  = Serial1.read();
+//     int jarak_mm = (highByte * 256) + lowByte;
+//     return jarak_mm / 10.0; 
+//   }
+//   return -1.0; 
+// }
 
 // FUNGSI NON-BLOCKING PARSER DATA DARI NANO
 void readDataFromNano() {
@@ -150,7 +150,7 @@ void readDataFromNano() {
 // =======================================================
 void setup() {
   Serial.begin(115200); // Komunikasi ke PC / Jetson
-  Serial1.begin(9600);  // US-100 UART (S7 Kiri)
+  // Serial1.begin(9600);  // US-100 UART (S7 Kiri)
   Serial2.begin(9600);  // Komunikasi Nano
   
   wdt_disable();
@@ -207,7 +207,7 @@ void loop() {
     // 4. Jika 1 siklus ultrasonik selesai, panggil CMPS12 & sensor lainnya
     if (current_sensor == 0) {
       readCMPS12();
-      jarakS7 = readSensorS7_UART(); // S7 Kiri (UART)
+      // jarakS7 = readSensorS7_UART(); // S7 Kiri (UART)
     }
   }
 
@@ -218,7 +218,8 @@ void loop() {
     // Masukkan data ke array untuk dikirim (17 elemen)
     data_kirim[0] = readCMPS12();
     data_kirim[1] = jarak_filter[3]; // S4 (Depan)
-    data_kirim[2] = (int16_t)jarakS7; // S7 (Kiri) - UART
+    // data_kirim[2] = (int16_t)jarakS7; // S7 (Kiri) - UART
+    data_kirim[2] = jarak_filter[6]; // S7 (Kiri) - UART
     data_kirim[3] = jarak_filter[1]; // S2 (Kanan)
     data_kirim[4] = jarak_filter[4]; // S5 (Belakang)
     data_kirim[5] = nanoDataA;       // tombol_start (Nano_A)
