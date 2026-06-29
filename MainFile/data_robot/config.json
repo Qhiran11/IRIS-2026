@@ -1,9 +1,10 @@
 {
     "umum": {
         "jeda_transisi_default": 0.01,
-        "target_jarak_kanan_awal": 10,
-        "target_jarak_belakang_awal": 15,
-        "gerak_dasar": "stop"
+        "target_jarak_kanan_awal": 28,
+        "target_jarak_belakang_awal": 10,
+        "gerak_dasar": "stop",
+        "Tinggi": 5
     },
     "gerakan_kfs": {
         "maju": {
@@ -51,27 +52,27 @@
             111
         ],
         "mendekat": {
-            "base_speed": 80,
-            "max_pwm": 110,
-            "target_mundur": 15
+            "base_speed": 40,
+            "max_pwm": 70,
+            "target_mundur": 30
         },
         "geser_samping": {
             "base_speed": 45,
             "max_pwm": 65
         },
         "mulai_jepit": {
-            "base_speed": 15,
-            "max_pwm": 20,
-            "batas_belakang": 3
+            "base_speed": 20,
+            "max_pwm": 30,
+            "batas_belakang": 5
         },
         "maju_30cm": {
-            "base_speed": 120,
-            "max_pwm": 255,
-            "batas_belakang": 51
+            "base_speed": 90,
+            "max_pwm": 125,
+            "batas_belakang": 70
         },
         "putar": {
-            "base_speed": 100,
-            "max_pwm": 110,
+            "base_speed": 80,
+            "max_pwm": 90,
             "target_angle_1": 90,
             "target_angle_2": -90
         }

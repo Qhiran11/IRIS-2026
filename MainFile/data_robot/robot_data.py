@@ -52,10 +52,9 @@ class SystemState:
 
 class SensorData:
     def __init__(self):
-        self.temp_kompas = 0
-        self.temp_pitch = 0  # [BARU] Variabel untuk menyimpan kalibrasi awal pitch
         
         self.kompas = 0
+        self.pitch_kompas = 0
         # sensor ultrasonic
         self.ultrasonic_depan = 0
         self.ultrasonic_kiri = 0
@@ -66,34 +65,18 @@ class SensorData:
         self.ultrasonic_bawah_depan = 0
         self.ultrasonic_bawah_tengah = 0
         self.ultrasonic_bawah_belakang = 0
-        self.pitch_kompas = 0
+        
+        self.temp_kompas = 0
+        self.temp_pitch = 0  # [BARU] Variabel untuk menyimpan kalibrasi awal pitch
 
         self.tombol_start = 1
         self.tombol_reset = 1
         self.cekTombak = 0
         # --- DATA SENSOR (30% Bilangan Bulat / Int) ---
         self.switch = 0
-        self.proxi_belakang = 0
-        self.proxi_depan = 1
 
         # Di dalam class Sensor atau RobotData Anda
         self.data_qr = ""
-        
-        # --- DATA BINARY (70% 0 atau 1) ---
-        self.kfs_terdeteksi = False
-        self.limit_kanan_capit = 0
-        self.limit_kiri_capit = 0
-            
-        self.limit_capitBuka      = 1
-        self.limit_capitJepit      = 1
-        
-        # Data Cadangan
-        self.kompas2 = 0
-        self.kompas3 = 0
-        
-        self.kfs_terdeteksi = 0
-        self.sensor_kfs_depan = 0
-        self.posisi_di_hutan = 0
         
 
     def update_dari_array(self, arr):
@@ -133,7 +116,8 @@ class SensorData:
             elif pitch_relatif < -180:
                 pitch_relatif += 360
             
-            self.pitch_kompas = pitch_relatif
+            # self.pitch_kompas = pitch_relatif
+            self.pitch_kompas = arr[10]
             
             
             # Pemetaan sensor ultrasonik utama
@@ -152,10 +136,6 @@ class SensorData:
             self.ultrasonic_bawah_belakang = arr[9]  # S6 (Bawah Belakang)
             # self.pitch_kompas = arr[10]  # <--- Ini dihapus/diganti dengan logika di atas
 
-            # Backward compatibility / Cadangan
-            # Catatan: Jika kompas2 juga butuh dinormalisasi, Anda bisa menggantinya dengan self.pitch_kompas
-            self.kompas2 = arr[10] # simpan pitch ke kompas2 (Raw / Mentah)
-            self.kompas3 = arr[0]  # (Raw / Mentah)
 
 
 class MotorCommand:
@@ -174,7 +154,7 @@ class MotorCommand:
         self.pca_motor = 0   # index 6
 
         # Relays
-        self.CapitTombakJepit = 0     # index 7 (Relay 1 - pin 40)
+        self.CapitTombakJepit = 1     # index 7 (Relay 1 - pin 40)
         self.CapitTombakNaikTurun = 0 # index 8 (Relay 2 - pin 42)
         self.relayCapitKFSJepit = 0   # index 9 (Relay 3 - pin 36)
         self.relayCapitKFSAngkat = 0  # index 9 (Relay 3 - pin 36)
@@ -222,9 +202,9 @@ class MotorCommand:
             int(self.m2_pwm),                     # index 4 (BR / M4)
             int(self.m3_pwm),                     # index 5 (BL / M5)
             int(self.pca_motor),                  # index 6 (PCA Motor)
-            int(self.CapitTombakJepit),           # index 7 (Relay 1 - pin 40)
-            int(self.CapitTombakNaikTurun),       # index 8 (Relay 2 - pin 42)
-            int(r3),                              # index 9 (Relay 3 - pin 36)
+            int(self.CapitTombakNaikTurun),       # index 7 (Relay 1 - pin 40)
+            int(self.CapitTombakJepit),           # index 8 (Relay 2 - pin 42)
+            int(self.relayCapitKFSJepit),                              # index 9 (Relay 3 - pin 36)
             0,                                    # index 10 (Unused)
             0,                                    # index 11 (Unused)
             0,                                    # index 12 (Unused)
@@ -247,8 +227,10 @@ class Robot:
 
         self.ROBOT_MAIN_STATE = "STANDBY"
         self.config = ConfigManager('config.json')
-        self.targetJarakKanan = self.config.data.get("umum", {}).get("target_jarak_kanan_awal", 8) # JARAK AWAL DI KANAN
-        self.targetJarakBelakang = self.config.data.get("umum", {}).get("target_jarak_belakang_awal", 15)
+        # self.targetJarakKanan = self.config.data.get("umum", {}).get("target_jarak_kanan_awal") # JARAK AWAL DI KANAN
+        self.targetJarakKanan = 47 # JARAK AWAL DI KANAN
+        # self.targetJarakBelakang = self.config.data.get("umum", {}).get("target_jarak_belakang_awal", 15)
+        self.targetJarakBelakang = 20
 
         self.totalNaik = 0
         

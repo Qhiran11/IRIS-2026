@@ -5,7 +5,6 @@ import time
 class RakitSenjata:
     def __init__(self):
         # HAPUS semua inisialisasi state di sini karena sudah pindah ke robot_data.py
-        self.targetJarakKanan = 50
         self.UjungTombak = "ada"
 
     def transition_to(self, target_state, now, robot, gerak):
@@ -14,87 +13,12 @@ class RakitSenjata:
         robot.state.rakit_next_state = target_state
         robot.state.rakit_transition_start = now
 
-    def target_tombak(self, robot, jarak_kanan, gerak, now):
-        # 1. Cek status sensor tombak
-        tombak_terdeteksi = (robot.sensor.cekTombak == 0)
-
-        # 2. Inisialisasi state jika belum ada di memori robot
-        if not hasattr(robot.state, 'sedang_menyesuaikan_tombak'):
-            robot.state.sedang_menyesuaikan_tombak = False
-
-        # 3. Kunci target saat PERTAMA KALI tombak terlihat di siklus ini
-        if tombak_terdeteksi and not robot.state.sedang_menyesuaikan_tombak:
-            robot.state.sedang_menyesuaikan_tombak = True
-            
-            # Daftar titik target valid: 11 + [0, 20, 40, 60, 80, 100]
-            titik_referensi = robot.config.data.get("rakit_senjata", {}).get("titik_referensi_tombak", [11, 31, 51, 71, 91, 111])
-            
-            # Cari nilai di dalam titik_referensi yang jarak selisihnya paling kecil dengan jarak_kanan saat ini
-            titik_terdekat = min(titik_referensi, key=lambda x: abs(x - jarak_kanan))
-            
-            # Langsung timpa/stel target ke titik terdekat yang baru didapat
-            robot.targetJarakKanan = titik_terdekat
-            print(f"[SENJATA] Tombak terdeteksi di jarak {jarak_kanan}cm! Target disesuaikan otomatis ke {titik_terdekat}cm.")
-
-        # 4. Kalkulasi jarak_pas diletakkan DI SINI (setelah penyesuaian target otomatis di atas)
-        jarak_pas = (robot.targetJarakKanan - 1) <= jarak_kanan <= (robot.targetJarakKanan + 1)
-
-        # ==========================================
-        # KONDISI A: MODE SESUAIKAN (Tombak sudah ditemukan, sedang dipaskan)
-        # ==========================================
-        if robot.state.sedang_menyesuaikan_tombak:
-            if jarak_pas:
-                # Target sudah pas -> Berhenti, Aktifkan relay, matikan mode sesuaikan
-                gerak.stop(robot)
-                print(f"[SENJATA] Posisi lateral pas ({robot.targetJarakKanan}cm). Mengaktifkan relay tambahan...")
-                
-                # Reset state untuk persiapan tugas robot selanjutnya
-                robot.state.sedang_menyesuaikan_tombak = False 
-                return True
-            else:
-                # Target belum pas -> Terus geser ke titik_terdekat yang sudah disetel
-                robot.state.rakit_transition_start = now
-                if robot.targetJarakKanan > 40 and 21 <= jarak_kanan <= 28:
-                    pass
-                else:
-                    gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan)
-                return False
-
-        # ==========================================
-        # KONDISI B: MODE PENCARIAN (Tombak belum ketemu sama sekali)
-        # ==========================================
-        else:
-            if jarak_pas:
-                # Target sudah sampai TAPI tombak tidak ada -> Tambah target kanan +20cm
-                gerak.stop(robot)
-                
-                if not hasattr(robot.state, 'last_search_time'):
-                    robot.state.last_search_time = now
-                    
-                if (now - robot.state.last_search_time > 0.1): # Jeda pencarian 0.1 detik sebelum geser
-                    print(f"[SENJATA] Tombak tidak ada di lokasi ({robot.targetJarakKanan}cm). Menggeser target +20cm")
-                    if robot.targetJarakKanan > 120:
-                        robot.targetJarakKanan -= 120      
-                    robot.targetJarakKanan += 20
-                    robot.state.last_search_time = now
-                return False
-            else:
-                # Target belum sampai -> Terus geser untuk mencari
-                robot.state.rakit_transition_start = now
-                if robot.targetJarakKanan > 40 and 21 <= jarak_kanan <= 28:
-                    pass
-                else:
-                    gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan)
-                return False
-    
-    
-    
     
     def jalankan(self, robot, gerak, now):
         jarak_belakang  = robot.sensor.ultrasonic_belakang
         jarak_kanan     = robot.sensor.ultrasonic_kanan
         jarak_bawah_tengah = robot.sensor.ultrasonic_bawah_tengah
-        target_jarak = robot.targetJarakBelakang
+        target_jarak = 15
 
         # ---------------------------------------------------------
         # STATE MACHINE MENGGUNAKAN IF-ELIF
@@ -110,14 +34,19 @@ class RakitSenjata:
         elif robot.state.rakit_state == "IDLE":
             robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
             robot.state.rakit_transition_start = now
-            if gerak.turun_ke_titk(robot, 4):
-                self.transition_to("PENYEIMBANGAN", now, robot, gerak)
+            if gerak.turun_ke_titk(robot, 5):
+                gerak.stop(robot)
+                self.transition_to("PERSIAPAN", now, robot, gerak)
+                
         
         elif robot.state.rakit_state == "PENYEIMBANGAN":
             gerak.penyeimbang(robot, now)
-            if (now - robot.state.rakit_transition_start > 0.1): # Delay stabilisasi
+            pitch_sekarang = robot.sensor.pitch_kompas
+            if (pitch_sekarang == 1 or pitch_sekarang == -1 or pitch_sekarang == 0): # Delay stabilisasi
                 print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
                 self.transition_to("PERSIAPAN", now, robot, gerak)
+            else:
+                robot.state.rakit_transition_start = now
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
@@ -135,54 +64,61 @@ class RakitSenjata:
         
         elif robot.state.rakit_state == "MENDEKAT":
             cfg_dekat = robot.config.data.get("rakit_senjata", {}).get("mendekat", {})
-            gerak.base_speed = cfg_dekat.get("base_speed", 100) # Kecepatan pelan
-            gerak.max_pwm = cfg_dekat.get("max_pwm", 180)
+            gerak.base_speed = cfg_dekat.get("base_speed") # Kecepatan pelan
+            gerak.max_pwm = cfg_dekat.get("max_pwm")
             if gerak.mundur_ke_titik(robot, target_jarak, now):
+                robot.state.rakit_transition_start = now
+                self.transition_to("GESER_KESAMPING", now, robot, gerak)
+        
+
+        elif robot.state.rakit_state == "NAIK2":
+            if gerak.turun_ke_titk(robot, 6):
                 robot.state.rakit_transition_start = now
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
             cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping", {})
-            gerak.base_speed = cfg_geser.get("base_speed", 45) # Kecepatan pelan
-            gerak.max_pwm = cfg_geser.get("max_pwm", 65)
-            robot.motor.CapitTombakNaikTurun = 1
-            if gerak.geser_ke_titik_kanan(robot, robot.targetJarakKanan, now):
+            gerak.base_speed = cfg_geser.get("base_speed") # Kecepatan pelan
+            gerak.max_pwm = cfg_geser.get("max_pwm")
+            robot.motor.CapitTombakNaikTurun = 0
+            if gerak.geser_ke_titik_kanan(robot, 51, now):
                 self.transition_to("NAIK_paskan", now, robot, gerak)
         
         elif robot.state.rakit_state == "NAIK_paskan":
-            if gerak.turun_ke_titk(robot,30):
+            
+            robot.motor.CapitTombakJepit = 1
+            if gerak.turun_ke_titk(robot,29):
                 # hitung delay 0.1 detik
                 if (now - robot.state.rakit_transition_start > 0.1):
                     self.transition_to("MULAI_JEPIT", now, robot, gerak)
+                
 
         elif robot.state.rakit_state == "MULAI_JEPIT":
             cfg_jepit = robot.config.data.get("rakit_senjata", {}).get("mulai_jepit", {})
-            gerak.base_speed = cfg_jepit.get("base_speed", 15) # Jauh lebih pelan
-            gerak.max_pwm = cfg_jepit.get("max_pwm", 20)
-            robot.motor.CapitTombakJepit = 1
-            if (now - robot.state.rakit_transition_start > 1.0 ):
-                gerak.mundur(robot)
-            if jarak_belakang < cfg_jepit.get("batas_belakang", 3): # target 2 cm
+            gerak.base_speed = cfg_jepit.get("base_speed", 20) # Jauh lebih pelan
+            gerak.max_pwm = cfg_jepit.get("max_pwm", 30)
+            robot.motor.CapitTombakNaikTurun = 1
+            if gerak.mundur_ke_titik(robot, 3, now):
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)
 
         elif robot.state.rakit_state == "JEPIT":
-            if (now - robot.state.rakit_transition_start > 1):
+            if (now - robot.state.rakit_transition_start > 0.1):
                 robot.motor.CapitTombakJepit = 0
-            if (now - robot.state.rakit_transition_start > 1.5):
+            if (now - robot.state.rakit_transition_start > 1.0):
                 robot.motor.CapitTombakNaikTurun = 0
                 self.transition_to("RELAY_MATI_2", now, robot, gerak)
 
         elif robot.state.rakit_state == "RELAY_MATI_2":
-            if (now - robot.state.rakit_transition_start >= 1.0):
+            if (now - robot.state.rakit_transition_start >= 0.5):
                 self.transition_to("MAJU_30CM", now, robot, gerak)
 
         elif robot.state.rakit_state == "MAJU_30CM":
             cfg_maju = robot.config.data.get("rakit_senjata", {}).get("maju_30cm", {})
-            gerak.base_speed = cfg_maju.get("base_speed", 120)
-            gerak.max_pwm = cfg_maju.get("max_pwm", 255)
+            gerak.base_speed = 100
+            gerak.max_pwm = 120
             
-            if jarak_belakang >= cfg_maju.get("batas_belakang", 51): # target 30 cm (52cm sensor belakang)
+            if jarak_belakang >= cfg_maju.get("batas_belakang"): # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.1):
                     print("[SENJATA] Tiba di posisi 30cm.")
@@ -192,13 +128,13 @@ class RakitSenjata:
                 if robot.targetJarakKanan <= 35:
                     gerak.maju_diagonal_kiri(robot)
                 else:
-                    gerak.mundur_ke_titik(robot, 52)
+                    gerak.mundur_ke_titik(robot, cfg_maju.get("batas_belakang"), now)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":
             cfg_putar = robot.config.data.get("rakit_senjata", {}).get("putar", {})
-            gerak.base_speed = cfg_putar.get("base_speed", 100)
-            gerak.max_pwm = cfg_putar.get("max_pwm", 110)
+            gerak.base_speed = 110
+            gerak.max_pwm = 120
             gerak.hadap_sudut(robot, now)
             if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
                 if (now - robot.state.rakit_transition_start > 0.2):

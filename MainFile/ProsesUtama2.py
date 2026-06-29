@@ -124,10 +124,20 @@ def main():
                     #     getattr(gerak, nama_gerakan)(robot)
                     # else:
                     gerak.stop(robot)
-                    # gerak.mundur(robot)
-                    # robot.motor.mDorong1 = -165 # => pw belakang, postif naik, negatif turun
-                    # robot.motor.mDorong2 = -255 # => pw depan,  postif naik, negatif turun
+                    # robot.motor.mDorong1 = -235
+                    # robot.motor.mDorong2 = -255 
+                    
+                    # gerak.naikTurunBiasa(robot, 10)
+                    # robot.motor.CapitTombakJepit = 0
+                    # robot.motor.mDorong1 = 255 # BELAKANG
+                    # robot.motor.mDorong2 = 255 # DEPAN
                     # gerak.penyeimbang(robot, now)
+                    gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"))
+                    # gerak.naikTurunBiasa(robot, 14)
+                    # gerak.mundur_ke_titik(robot, 40, now)
+                    # gerak.hadap_sudut(robot, now)
+
+                    # robot.motor.CapitTombakNaikTurun = 1
                     # gerak.turun_ke_titk(robot, 30)
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
@@ -144,9 +154,23 @@ def main():
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
                         robot.motor.CapitTombakNaikTurun = 0
-                        robot.motor.CapitTombakJepit = 0
+                        robot.motor.CapitTombakJepit = 1
                         is_running = True       # Ubah mode menjadi Running
                         continue # Skip semua logika di bawah, kembali ke awal while
+                    if robot.sensor.tombol_reset == 0:
+                        print("\n[SYSTEM] MASTER RESET DITEKAN! Kembali ke Standby...")
+                        robot.ROBOT_MAIN_STATE = "STANDBY"
+                        robot.state.reset_all()
+                        gerak.stop(robot)
+                        kamera.start()
+                        robot.motor.CapitTombakNaikTurun = 0
+                        robot.motor.CapitTombakJepit = 1
+                        writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
+                        robot.sensor.switch = 0
+                        gerak.target_angle = 0
+                        robot.sensor.update_dari_array(array_input) # Update memori robot
+                        is_running = False # Kembalikan program ke fase Standby
+                        continue # Langsung melompat kembali ke awal loop
 
                 else:
                     if robot.sensor.tombol_reset == 0:
@@ -154,8 +178,9 @@ def main():
                         robot.ROBOT_MAIN_STATE = "STANDBY"
                         robot.state.reset_all()
                         gerak.stop(robot)
+                        kamera.start()
                         robot.motor.CapitTombakNaikTurun = 0
-                        robot.motor.CapitTombakJepit = 0
+                        robot.motor.CapitTombakJepit = 1
                         writer.kirim_data(robot.motor.get_array_output()) # Paksa motor mati
                         robot.sensor.switch = 0
                         gerak.target_angle = 0
@@ -167,7 +192,10 @@ def main():
                     if robot.state.main_state == "READY":
                         gerak.stop(robot)
                         if (now - robot.state.main_then > 0.1):
-                            robot.state.main_state = "GO"
+                            # robot.state.main_state = "GO"
+                            # robot.state.main_state = "GOGO"
+                            robot.state.main_state = "NAIK"
+                            
                             # robot.state.main_state = "AMBILKFS"
                             robot.state.main_then = now
                 
