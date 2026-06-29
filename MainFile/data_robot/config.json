@@ -4,6 +4,7 @@
         "target_jarak_kanan_awal": 28,
         "target_jarak_belakang_awal": 10,
         "gerak_dasar": "stop",
+        "mundur_ke_titik": 100,
         "Tinggi": 5
     },
     "gerakan_kfs": {
@@ -68,13 +69,29 @@
         "maju_30cm": {
             "base_speed": 90,
             "max_pwm": 125,
-            "batas_belakang": 70
+            "batas_belakang": 20
         },
         "putar": {
             "base_speed": 80,
             "max_pwm": 90,
             "target_angle_1": 90,
             "target_angle_2": -90
+        }
+    },
+    "pid_values": {
+        "mundur_ke_titik": {
+            "kp_max": 8.0,
+            "kp_min": 2.0,
+            "ki_min": 0.001,
+            "ki_max": 0.01,
+            "Kd": 0.5
+        },
+        "turun_ke_titik": {
+            "kp_max": 10.0,
+            "kp_min": 2.0,
+            "ki_min": 0.09,
+            "ki_max": 0.0,
+            "Kd": 1.0
         }
     }
 }

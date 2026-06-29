@@ -114,7 +114,7 @@ class GerakanDasar:
     def __init__(self):
         self.pid_kompas = PIDController(Kp=5.0, Ki=0.001, Kd=5.0)
         self.pid_kompas2 = PIDController(Kp=5.0, Ki=0.001, Kd=5.0)
-        self.pid_jarak = PIDController(Kp=5.0, Ki=0.05, Kd=1.0) 
+        self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=5.0) 
 
         self.pid_tinggi = PIDController(Kp=10.0, Ki=0.0, Kd=0.0)
         self.pid_pitch = PIDController(Kp=4.0, Ki=0.0, Kd=0.0)
@@ -122,6 +122,7 @@ class GerakanDasar:
         # State & tuner auto-tuning
         self.tuners = {}
         self.tuning_states = {}
+        self.start_distances = {}
         
         # Tentukan kecepatan maksimal motor (misalnya 255 atau 155 sesuai spesifikasi motor/driver)
         self.base_speed = 100  # Batas minimal PWM saat robot butuh koreksi
@@ -180,14 +181,14 @@ class GerakanDasar:
         jarak = robot.sensor.ultrasonic_bawah_tengah
         if jarak < target:
             robot.motor.mDorong1 = -255
-            robot.motor.mDorong2 = -240
+            robot.motor.mDorong2 = -255
         else:
             robot.motor.mDorong1 = 0
             robot.motor.mDorong2 = 0
     
-    def turun_ke_titk(self, robot, target_jarak, now=None, temp_pitch=3, tun="off"):
-        if now is None:
-            now = time.time()
+    def turun_ke_titk(self, robot, target_jarak, tun="off"):
+        temp_pitch=3
+        now = time.time()
             
         jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
         pitch_sekarang = robot.sensor.pitch_kompas
@@ -311,6 +312,8 @@ class GerakanDasar:
         self.pid_kompas.reset()
         self.pid_kompas2.reset()
         self.pid_jarak.reset()
+        if hasattr(self, 'start_distances'):
+            self.start_distances.clear()
         
 
     # =====================================================================
@@ -396,10 +399,10 @@ class GerakanDasar:
             
             if pid_cfg is None:
                 if func_name == "maju_ke_titik":
-                    initial_p = [8.0, 1.1, 0.1, 1.0]
+                    initial_p = [6.0, 1.1, 0.1, 1.0]
                     initial_dp = [1.0, 0.2, 0.02, 0.2]
                 elif func_name == "mundur_ke_titik":
-                    initial_p = [8.0, 2.0, 0.1, 1.0]
+                    initial_p = [6.0, 2.0, 0.1, 1.0]
                     initial_dp = [1.0, 0.3, 0.02, 0.2]
                 elif func_name == "geser_ke_titik_kanan":
                     initial_p = [5.0, 1.0, 1.5, 1.0]
@@ -576,11 +579,16 @@ class GerakanDasar:
                 self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
                 # ---------------------------------
 
+        # Batasi kecepatan maksimal secara dinamis mendekati target (berlaku untuk semua jarak)
+        current_limit = self.base_speed
+        if abs_error <= 30.0:
+            current_limit = self._map_value(abs_error, 3, 30, 20, self.base_speed)
+
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         speed_jarak = self.pid_jarak.compute(target_jarak, jarak_sekarang)
 
-        # Batasi output PID sesuai base_speed
-        speed_jarak = max(-self.base_speed, min(self.base_speed, speed_jarak))
+        # Batasi output PID sesuai base_speed dinamis
+        speed_jarak = max(-current_limit, min(current_limit, speed_jarak))
 
         self._apply_motor(
             robot,
@@ -606,7 +614,7 @@ class GerakanDasar:
         return False
 
         
-    def mundur_ke_titik(self, robot, target_jarak, now, tun="off"):
+    def mundur_ke_titik(self, robot, target_jarak, now):
         robot.state.gerak_dasar_aktif = "MUNDUR KE TITIK"
         jarak_sekarang = robot.sensor.ultrasonic_belakang
         
@@ -618,39 +626,11 @@ class GerakanDasar:
 
         abs_error = abs(jarak_sekarang - target_jarak)
         
-        is_tuning = tun in ["on", "ON", "True", True]
-        
-        if is_tuning:
-            is_running_trial = self._handle_tuning(robot, "mundur_ke_titik", target_jarak, jarak_sekarang, now, tolerance=1.0)
-            if not is_running_trial:
-                return False
-            tuner = self._get_tuner(robot, "mundur_ke_titik")
-            candidate = tuner.get_next_candidate()
-            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
-            dinamis_Kp = self._map_value(abs_error, 5, 30, kp_min, kp_max)
-            dinamis_Ki = self._map_value(abs_error, 1, 10, ki_min, 0.0)
-            self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-        else:
-            use_tuned = False
-            if hasattr(robot, 'config') and robot.config.data:
-                pid_cfg = robot.config.data.get("pid_values", {}).get("mundur_ke_titik")
-                if pid_cfg:
-                    kp_max = pid_cfg.get("kp_max", 8.0)
-                    kp_min = pid_cfg.get("kp_min", 2.0)
-                    ki_min = pid_cfg.get("ki_min", 0.1)
-                    Kd = pid_cfg.get("Kd", 1.0)
-                    
-                    dinamis_Kp = self._map_value(abs_error, 5, 30, kp_min, kp_max)
-                    dinamis_Ki = self._map_value(abs_error, 1, 10, ki_min, 0.0)
-                    self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-                    use_tuned = True
-                    
-            if not use_tuned:
-                # --- ADAPTIVE TUNING PID JARAK ---
-                dinamis_Kp = self._map_value(abs_error, 5, 30, 2.0, 8.0)
-                dinamis_Ki = self._map_value(abs_error, 1, 10, 0.1, 0.0)
-                self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
-                # ---------------------------------
+        # --- ADAPTIVE TUNING PID JARAK ---
+        dinamis_Kp = self._map_value(abs_error, 5, 30, 2.0, 8.0)
+        dinamis_Ki = self._map_value(abs_error, 1, 10, 0.1, 0.0)
+        self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
+        # ---------------------------------
 
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         speed_jarak = self.pid_jarak.compute(target_jarak, jarak_sekarang)
@@ -661,20 +641,20 @@ class GerakanDasar:
                           -speed_jarak - kor_sudut, -speed_jarak - kor_sudut, 
                           -speed_jarak + kor_sudut, -speed_jarak + kor_sudut)
         
-        if not is_tuning:
-            if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
-                self.stop(robot)
-                if getattr(self, 'waktu_patokan', None) is None:
-                    self.waktu_patokan = now
-                if now - self.waktu_patokan > 0.1:
-                    self.waktu_patokan = None  
-                    self.pid_jarak.reset()
-                    self.pid_kompas2.reset()
-                    return True
-            else:
-                self.waktu_patokan = None
+        if target_jarak - 1 <= jarak_sekarang <= target_jarak + 1:
+            self.stop(robot)
+            if getattr(self, 'waktu_patokan', None) is None:
+                self.waktu_patokan = now
+            if now - self.waktu_patokan > 0.1:
+                self.waktu_patokan = None  
+                self.pid_jarak.reset()
+                self.pid_kompas2.reset()
+                return True
+        else:
+            self.waktu_patokan = None
             
         return False    
+ 
 
 
     def geser_ke_titik_kanan(self, robot, target_jarak, now, tun="off"):
@@ -728,8 +708,15 @@ class GerakanDasar:
             
             speed_geser = self.pid_jarak.compute(target_jarak, jarak_sekarang)
             
+        # Batasi kecepatan maksimal secara dinamis mendekati target (berlaku untuk semua jarak)
+        current_limit = self.base_speed
+        if jarak_sekarang > 0:
+            abs_error = abs(jarak_sekarang - target_jarak)
+            if abs_error <= 30.0:
+                current_limit = self._map_value(abs_error, 3, 30, 20, self.base_speed)
+
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
-        speed_geser = max(-self.base_speed, min(self.base_speed, speed_geser))
+        speed_geser = max(-current_limit, min(current_limit, speed_geser))
         
         self._apply_motor(robot, 
                           -speed_geser - kor_sudut,  speed_geser - kor_sudut, 
@@ -815,10 +802,15 @@ class GerakanDasar:
                 self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
                 # ---------------------------------
 
+        # Batasi kecepatan maksimal secara dinamis mendekati target (berlaku untuk semua jarak)
+        current_limit = self.base_speed
+        if abs_error <= 30.0:
+            current_limit = self._map_value(abs_error, 3, 30, 20, self.base_speed)
+
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
         speed_geser = self.pid_jarak.compute(target_jarak, jarak_sekarang)
             
-        speed_geser = max(-self.base_speed, min(self.base_speed, speed_geser))
+        speed_geser = max(-current_limit, min(current_limit, speed_geser))
         
         # Eksekusi motor
         self._apply_motor(robot, 
@@ -912,8 +904,8 @@ class GerakanDasar:
         
         elif self.stateReturn == "turunBody":
             jarak_belakang = robot.sensor.ultrasonic_belakang
-            self.turun_ke_titk(robot, 4)
-            if jarak_belakang > 0:
+            
+            if self.turun_ke_titk(robot, 5):
                 self.stop(robot)
                 self.stateReturn = "MundurKetitik"
 
@@ -922,12 +914,12 @@ class GerakanDasar:
             self.max_pwm = 50
             if self.mundur_ke_titik(robot, 10, now):
                 self.stop(robot)
-                self.stateReturn = "HadapSudut"
-                return True
+                self.stateReturn = "geser ke titik kiri"
+               
         elif self.stateReturn == "geser ke titik kiri":
-            if self.geser_ke_titik_kiri(robot, 47, now):
+            if self.geser_ke_titik_kiri(robot, 97, now):
                 self.stop(robot)
                 self.stateReturn = "HadapSudut"
-                return True
+                return True 
         return False
         

@@ -119,28 +119,22 @@ def main():
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
                     gerak.target_angle = 0
-                    nama_gerakan = robot.config.data.get("umum", {}).get("gerak_dasar", "stop")
-                    # if hasattr(gerak, nama_gerakan):
-                    #     getattr(gerak, nama_gerakan)(robot)
-                    # else:
                     gerak.stop(robot)
-                    # robot.motor.mDorong1 = -235
-                    # robot.motor.mDorong2 = -255 
-                    
-                    # gerak.naikTurunBiasa(robot, 10)
                     # robot.motor.CapitTombakJepit = 0
                     # robot.motor.mDorong1 = 255 # BELAKANG
                     # robot.motor.mDorong2 = 255 # DEPAN
                     # gerak.penyeimbang(robot, now)
                     
-                    # gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"))
+                    
+                    # gerak.geser_ke_titik_kanan(robot, 160, now)
                     # gerak.turun_roda2( robot)
                     # robot.motor.mDorong1 = -200
+                    robot.motor.CapitTombakNaikTurun = 1
                     # gerak.naikTurunBiasa(robot, 14)
-                    # gerak.base_speed = 80
-                    # gerak.max_pwm = 100
-                    # gerak.geser_ke_titik_kanan(robot, 160, now)
-                    gerak.maju_ke_titik(robot, 100, now, tun="on")
+                    gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
+                    # gerak.naikTurunBiasa(robot,21)
+                    # gerak.mundur_ke_titik(robot, robot.config.data.get("umum", {}).get("mundur_ke_titik"), 
+                    # now, tun="off")
                     
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
@@ -195,10 +189,10 @@ def main():
                     if robot.state.main_state == "READY":
                         gerak.stop(robot)
                         if (now - robot.state.main_then > 0.1):
-                            # robot.state.main_state = "GO"
-                            robot.state.main_state = "GOGO"
+                            robot.state.main_state = "GO"
+                            # robot.state.main_state = "GOGO"
                             # robot.state.main_state = "NAIK"
-                            robot.state.main_state = "TURUN"
+                            # robot.state.main_state = "TURUN"
                             
                             # robot.state.main_state = "AMBILKFS"
                             robot.state.main_then = now
