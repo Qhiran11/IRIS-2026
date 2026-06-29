@@ -201,15 +201,37 @@ class GerakanDasar:
         is_tuning = tun in ["on", "ON", "True", True]
         
         if is_tuning:
-            is_running_trial = self._handle_tuning(robot, "turun_ke_titik", target_jarak, jarak_sekarang, now, self.pid_tinggi, tolerance=1.0)
+            is_running_trial = self._handle_tuning(robot, "turun_ke_titik", target_jarak, jarak_sekarang, now, tolerance=1.0)
             if not is_running_trial:
                 return False
+            tuner = self._get_tuner(robot, "turun_ke_titik")
+            candidate = tuner.get_next_candidate()
+            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
+            
+            def map_value(x, in_min, in_max, out_min, out_max):
+                x = max(in_min, min(in_max, x))
+                return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+            dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
+            dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
+            self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
         else:
             use_tuned = False
             if hasattr(robot, 'config') and robot.config.data:
                 pid_cfg = robot.config.data.get("pid_values", {}).get("turun_ke_titik")
                 if pid_cfg:
-                    self.pid_tinggi.set_tunings(pid_cfg.get("Kp", 10.0), pid_cfg.get("Ki", 0.0), pid_cfg.get("Kd", 0.0))
+                    kp_max = pid_cfg.get("kp_max", 10.0)
+                    kp_min = pid_cfg.get("kp_min", 2.0)
+                    ki_min = pid_cfg.get("ki_min", 0.09)
+                    Kd = pid_cfg.get("Kd", 1.0)
+                    
+                    def map_value(x, in_min, in_max, out_min, out_max):
+                        x = max(in_min, min(in_max, x))
+                        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+                    dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
+                    dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
+                    self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
                     use_tuned = True
                     
             if not use_tuned:
