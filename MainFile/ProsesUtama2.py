@@ -131,10 +131,9 @@ def main():
                     # robot.motor.mDorong1 = -200
                     # robot.motor.CapitTombakNaikTurun = 1
                     # gerak.naikTurunBiasa(robot, 14)
-                    gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
+                    gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"))
                     # gerak.naikTurunBiasa(robot,21)
-                    # gerak.mundur_ke_titik(robot, robot.config.data.get("umum", {}).get("mundur_ke_titik"), 
-                    # now, tun="off")
+                    # gerak.mundur(robot)
                     
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)

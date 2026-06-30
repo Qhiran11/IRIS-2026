@@ -62,8 +62,8 @@
             "max_pwm": 65
         },
         "mulai_jepit": {
-            "base_speed": 20,
-            "max_pwm": 30,
+            "base_speed": 40,
+            "max_pwm": 50,
             "batas_belakang": 5
         },
         "maju_30cm": {

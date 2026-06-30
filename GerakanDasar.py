@@ -134,6 +134,8 @@ class GerakanDasar:
         self.waktu_patokan = 0
 
         self.stateReturn = "HadapSudut"
+        self.waktu_patokan = None
+
 
         # --- VARIABEL UNTUK FILTER NOISE SENSOR ---
         self.last_valid_jarak_kanan = None
@@ -186,10 +188,8 @@ class GerakanDasar:
             robot.motor.mDorong1 = 0
             robot.motor.mDorong2 = 0
     
-    def turun_ke_titk(self, robot, target_jarak, tun="off"):
-        temp_pitch=3
+    def turun_ke_titk(self, robot, target_jarak, temp_pitch=7):
         now = time.time()
-            
         jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
         pitch_sekarang = robot.sensor.pitch_kompas
         
@@ -197,214 +197,146 @@ class GerakanDasar:
         error_jarak = jarak_sekarang - target_jarak
         abs_error = abs(error_jarak)
         
-        error_pitch = pitch_sekarang - temp_pitch # Menghitung selisih dari patokan 3 derajat
+        error_pitch = pitch_sekarang - temp_pitch
+        abs_error_pitch = abs(error_pitch)
         
-        is_tuning = tun in ["on", "ON", "True", True]
+        # =========================================================
+        # CONTINUOUS ADAPTIVE TUNING (JARAK & PITCH)
+        # =========================================================
+        def map_value(x, in_min, in_max, out_min, out_max):
+            x = max(in_min, min(in_max, x))
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+        # Tuning Jarak
+        dinamis_Kp = map_value(abs_error, 2.0, 30.0, 1.0, 3.5)
+        dinamis_Ki = map_value(abs_error, 1.0, 5.0, 0.02, 0.0)
+        self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, 1.0)
         
-        if is_tuning:
-            is_running_trial = self._handle_tuning(robot, "turun_ke_titik", target_jarak, jarak_sekarang, now, tolerance=1.0)
-            if not is_running_trial:
-                return False
-            tuner = self._get_tuner(robot, "turun_ke_titik")
-            candidate = tuner.get_next_candidate()
-            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
-            
-            def map_value(x, in_min, in_max, out_min, out_max):
-                x = max(in_min, min(in_max, x))
-                return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+        # Tuning Pitch
+        dinamis_Kp_pitch = map_value(abs_error_pitch, 1.0, 5.0, 0.1, 0.5)
+        self.pid_pitch.set_tunings(dinamis_Kp_pitch, 0.0, self.pid_pitch.Kd)
 
-            dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
-            dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
-            self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-        else:
-            use_tuned = False
-            if hasattr(robot, 'config') and robot.config.data:
-                pid_cfg = robot.config.data.get("pid_values", {}).get("turun_ke_titik")
-                if pid_cfg:
-                    kp_max = pid_cfg.get("kp_max", 10.0)
-                    kp_min = pid_cfg.get("kp_min", 2.0)
-                    ki_min = pid_cfg.get("ki_min", 0.09)
-                    Kd = pid_cfg.get("Kd", 1.0)
-                    
-                    def map_value(x, in_min, in_max, out_min, out_max):
-                        x = max(in_min, min(in_max, x))
-                        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-                    dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
-                    dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
-                    self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-                    use_tuned = True
-                    
-            if not use_tuned:
-                # =========================================================
-                # CONTINUOUS ADAPTIVE TUNING (JARAK & WAKTU)
-                # =========================================================
-                def map_value(x, in_min, in_max, out_min, out_max):
-                    x = max(in_min, min(in_max, x))
-                    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-                # A. Tuning Kp Berdasarkan Jarak
-                # NAIKKAN batas bawahnya! Jangan 0.5, coba 2.0 agar motor tetap punya tenaga di 5cm terakhir.
-                # Batas atas dinaikkan ke 10.0 agar turunnya lebih gesit.
-                dinamis_Kp = map_value(abs_error, 3, 30, 2.0, 10.0)
-                
-                # B. Tuning Ki Berdasarkan Jarak & Waktu (Mencegah macet 1 menit)
-                # NAIKKAN Ki maksimal ke 0.2. Ini akan membuat akumulasi tenaga 4x lebih cepat dari sebelumnya.
-                dinamis_Ki = map_value(abs_error, 1, 10, 0.09, 0.0)
-                
-                # Terapkan nilai dinamis ke objek PID tinggi
-                self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, 1.0) 
-                # =========================================================
-
-        # 2. Toleransi: Berhenti jika masuk range aman (+- 1cm) dan pitch sesuai patokan (+- 1 derajat)
-        if not is_tuning:
-            if abs_error <= 1 and abs(error_pitch) <= 1:
+        # 2. Toleransi: Berhenti jika nilai 0 bertahan selama 0.1 detik
+        if target_jarak < 6 :
+            if abs_error <= 1.0 and abs_error_pitch <= 1.0:
                 robot.motor.mDorong1 = 0
                 robot.motor.mDorong2 = 0
-                self.pid_tinggi.reset()
-                self.pid_pitch.reset()
-                return True
+                
+                if getattr(self, 'waktu_patokan', None) is None:
+                    self.waktu_patokan = now
+                    
+                if now - self.waktu_patokan > 0.1:
+                    self.waktu_patokan = None
+                    self.pid_tinggi.reset()
+                    self.pid_pitch.reset()
+                    print("==> [SELESAI] Robot mencapai target dengan stabil!")
+                    return True
+            else:
+                self.waktu_patokan = None
+        else:    
+            if abs_error == 0.0 and abs_error_pitch <= 1.0:
+                robot.motor.mDorong1 = 0
+                robot.motor.mDorong2 = 0
+                
+                if getattr(self, 'waktu_patokan', None) is None:
+                    self.waktu_patokan = now
+                    
+                if now - self.waktu_patokan > 0.1:
+                    self.waktu_patokan = None
+                    self.pid_tinggi.reset()
+                    self.pid_pitch.reset()
+                    print("==> [SELESAI] Robot mencapai target dengan stabil!")
+                    return True
+            else:
+                self.waktu_patokan = None
             
-        # 3. Hitung PID Ketinggian (Menghasilkan Base PWM)
+        # 3. Hitung PID
         base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
+        koreksi_pitch = self.pid_pitch.compute(target=temp_pitch, current=pitch_sekarang)
         
-        # 4. Hitung PID Penyeimbang (Menghasilkan Koreksi Pitch)
-        koreksi_pitch = self.pid_pitch.compute(target=3, current=pitch_sekarang)
-        
-        # 5. PID MIXING
         pwm_belakang = base_pwm - koreksi_pitch
         pwm_depan = base_pwm + koreksi_pitch
         
-        # 6. ASYMMETRICAL CLAMPING
-        batas_maksimal_turun = 80    # Turun lambat dibantu gravitasi
-        batas_maksimal_naik = -255   # Naik kuat melawan gravitasi
-        batas_minimal_turun = 30     # Angka terkecil turun
-        batas_minimal_naik = -200    # Angka terkecil kuat ngangkat
+        # 6. ASYMMETRICAL CLAMPING (DENGAN ARGUMEN ERROR)
+        batas_maksimal_turun = 80
+        batas_maksimal_naik = -255
+        batas_minimal_turun = 30
+        batas_minimal_naik = -200
         
-        def batasi_pwm(pwm_motor):
-            # Clamping Maksimal
-            if pwm_motor > batas_maksimal_turun:
-                pwm_motor = batas_maksimal_turun
-            elif pwm_motor < batas_maksimal_naik:
-                pwm_motor = batas_maksimal_naik
-                
-            # Deadband Compensation
-            if 0 < pwm_motor < batas_minimal_turun:
-                pwm_motor = batas_minimal_turun
-            elif 0 > pwm_motor > batas_minimal_naik:
-                pwm_motor = batas_minimal_naik
-                
+        def batasi_pwm(pwm_motor, err):
+            limit_bawah = -120 if abs(err) < 5 else batas_minimal_naik
+            
+            if pwm_motor > batas_maksimal_turun: pwm_motor = batas_maksimal_turun
+            elif pwm_motor < batas_maksimal_naik: pwm_motor = batas_maksimal_naik
+            
+            if 0 < pwm_motor < batas_minimal_turun: pwm_motor = batas_minimal_turun
+            elif 0 > pwm_motor > limit_bawah: pwm_motor = limit_bawah
+            
             return int(pwm_motor)
 
         # 7. Aplikasikan ke motor
-        robot.motor.mDorong1 = batasi_pwm(pwm_belakang)
-        robot.motor.mDorong2 = batasi_pwm(pwm_depan)
-        return False    
+        robot.motor.mDorong1 = batasi_pwm(pwm_belakang, error_jarak)
+        robot.motor.mDorong2 = batasi_pwm(pwm_depan, error_jarak)
+        
+        # Telemetri
+        if not hasattr(self, 'last_print_time'): self.last_print_time = now
+        if now - self.last_print_time > 0.1:
+            print(f"[PID TURUN] Err: {error_jarak:.1f} | M1: {robot.motor.mDorong1} | M2: {robot.motor.mDorong2}")
+            self.last_print_time = now
             
-    def turun_ke_titk_no_pitch(self, robot, target_jarak, tun="off"):
-        now = time.time()
-            
+        return False
+    
+    
+    
+    def turun_ke_titk_no_pitch(self, robot, target_jarak):
         jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
         
         # 1. Hitung error jarak
         error_jarak = jarak_sekarang - target_jarak
         abs_error = abs(error_jarak)
         
-        is_tuning = tun in ["on", "ON", "True", True]
-        
-        if is_tuning:
-            is_running_trial = self._handle_tuning(robot, "turun_ke_titik_no_pitch", target_jarak, jarak_sekarang, now, tolerance=1.0)
-            if not is_running_trial:
-                return False
-            tuner = self._get_tuner(robot, "turun_ke_titik_no_pitch")
-            candidate = tuner.get_next_candidate()
-            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
-            
-            def map_value(x, in_min, in_max, out_min, out_max):
-                x = max(in_min, min(in_max, x))
-                return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-            dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
-            dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
-            self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-        else:
-            use_tuned = False
-            if hasattr(robot, 'config') and robot.config.data:
-                pid_cfg = robot.config.data.get("pid_values", {}).get("turun_ke_titik_no_pitch")
-                if pid_cfg:
-                    kp_max = pid_cfg.get("kp_max", 10.0)
-                    kp_min = pid_cfg.get("kp_min", 2.0)
-                    ki_min = pid_cfg.get("ki_min", 0.09)
-                    Kd = pid_cfg.get("Kd", 1.0)
-                    
-                    def map_value(x, in_min, in_max, out_min, out_max):
-                        x = max(in_min, min(in_max, x))
-                        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-                    dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
-                    dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
-                    self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-                    use_tuned = True
-                    
-            if not use_tuned:
-                # =========================================================
-                # CONTINUOUS ADAPTIVE TUNING (JARAK & WAKTU)
-                # =========================================================
-                def map_value(x, in_min, in_max, out_min, out_max):
-                    x = max(in_min, min(in_max, x))
-                    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-                # A. Tuning Kp Berdasarkan Jarak
-                dinamis_Kp = map_value(abs_error, 3, 30, 2.0, 10.0)
-                
-                # B. Tuning Ki Berdasarkan Jarak & Waktu (Mencegah macet 1 menit)
-                dinamis_Ki = map_value(abs_error, 1, 10, 0.09, 0.0)
-                
-                # Terapkan nilai dinamis ke objek PID tinggi
-                self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, 1.0) 
-                # =========================================================
-
         # 2. Toleransi: Berhenti jika masuk range aman (+- 1cm)
-        if not is_tuning:
-            if abs_error <= 1:
-                robot.motor.mDorong1 = 0
-                robot.motor.mDorong2 = 0
-                self.pid_tinggi.reset()
-                return True
+        if abs_error <= 1.0:
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
+            return True
             
-        # 3. Hitung PID Ketinggian (Menghasilkan Base PWM)
-        base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
-        
-        # 5. NO PITCH MIXING
-        pwm_belakang = base_pwm
-        pwm_depan = base_pwm
-        
-        # 6. ASYMMETRICAL CLAMPING
-        batas_maksimal_turun = 80    # Turun lambat dibantu gravitasi
-        batas_maksimal_naik = -255   # Naik kuat melawan gravitasi
-        batas_minimal_turun = 30     # Angka terkecil turun
-        batas_minimal_naik = -200    # Angka terkecil kuat ngangkat
-        
-        def batasi_pwm(pwm_motor):
-            # Clamping Maksimal
-            if pwm_motor > batas_maksimal_turun:
-                pwm_motor = batas_maksimal_turun
-            elif pwm_motor < batas_maksimal_naik:
-                pwm_motor = batas_maksimal_naik
-                
-            # Deadband Compensation
-            if 0 < pwm_motor < batas_minimal_turun:
-                pwm_motor = batas_minimal_turun
-            elif 0 > pwm_motor > batas_minimal_naik:
-                pwm_motor = batas_minimal_naik
-                
-            return int(pwm_motor)
+        # 3. Pisahkan batas maksimum dan minimum tiap roda (lifter)
+        # RODA/LIFTER BELAKANG (mDorong1)
+        max_turun_belakang = 80      # Turun lambat dibantu gravitasi
+        min_turun_belakang = 30      # Angka terkecil turun
+        max_naik_belakang = -255     # Naik kuat melawan gravitasi
+        min_naik_belakang = -200     # Angka terkecil naik
 
-        # 7. Aplikasikan ke motor
-        robot.motor.mDorong1 = batasi_pwm(pwm_belakang)
-        robot.motor.mDorong2 = batasi_pwm(pwm_depan)
+        # RODA/LIFTER DEPAN (mDorong2)
+        max_turun_depan = 80         # Turun lambat dibantu gravitasi
+        min_turun_depan = 30         # Angka terkecil turun
+        max_naik_depan = -238        # Naik kuat melawan gravitasi
+        min_naik_depan = -200        # Angka terkecil naik
+
+        # Helper untuk pemetaan nilai (deceleration)
+        def map_val(x, in_min, in_max, out_min, out_max):
+            x = max(in_min, min(in_max, x))
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+        # 4. Hitung kecepatan masing-masing roda secara bertahap (penurunan signifikan)
+        # Kita map abs_error dari [2.0, 20.0] cm ke [kecepatan_min, kecepatan_max]
+        if error_jarak > 0:
+            # Gerak TURUN (PWM Positif)
+            pwm_belakang = map_val(abs_error, 2.0, 20.0, min_turun_belakang, max_turun_belakang)
+            pwm_depan = map_val(abs_error, 2.0, 20.0, min_turun_depan, max_turun_depan)
+        else:
+            # Gerak NAIK (PWM Negatif)
+            pwm_belakang = map_val(abs_error, 2.0, 20.0, min_naik_belakang, max_naik_belakang)
+            pwm_depan = map_val(abs_error, 2.0, 20.0, min_naik_depan, max_naik_depan)
+
+        # 5. Aplikasikan ke motor dengan pembulatan integer
+        robot.motor.mDorong1 = int(pwm_belakang)
+        robot.motor.mDorong2 = int(pwm_depan)
         return False    
             
+    
+    
     
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
@@ -1007,7 +939,75 @@ class GerakanDasar:
             robot.motor.mDorong1 = kecepatan_hitung
             return False
             
-    
+    def naik_paskan_senjata(self, robot, target_jarak):
+        """
+        Fungsi khusus untuk NAIK mengangkat capit senjata dengan presisi.
+        Mengutamakan keseimbangan (pitch) dengan memberikan headroom PWM.
+        """
+        jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
+        pitch_sekarang = robot.sensor.pitch_kompas
+        
+        # 1. Hitung Error
+        error_jarak = jarak_sekarang - target_jarak
+        abs_error = abs(error_jarak)
+        
+        # Sesuaikan dengan patokan lurus mekanik Anda (contoh: 3 derajat)
+        temp_pitch = 6 
+        error_pitch = pitch_sekarang - temp_pitch
+        
+        # 2. Toleransi Berhenti: Pas di target (+- 1cm) DAN rata (+- 1 derajat)
+        if abs_error == 0 and error_pitch == 0:
+            robot.motor.mDorong1 = 0
+            robot.motor.mDorong2 = 0
+            self.pid_tinggi.reset()
+            self.pid_pitch.reset()
+            return True
+            
+        # 3. Helper Pemetaan Nilai
+        def map_val(x, in_min, in_max, out_min, out_max):
+            x = max(in_min, min(in_max, x))
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+        # 4. Tuning PID Dinamis & Statis
+        # Kp Tinggi dibatasi di 6.0 agar base_pwm tidak langsung mentok
+        dinamis_Kp_tinggi = map_val(abs_error, 2.0, 20.0, 3.0, 6.0) 
+        self.pid_tinggi.set_tunings(dinamis_Kp_tinggi, 0.0, 1.0)
+        
+        # PID Pitch WAJIB punya Ki (0.05) untuk mendobrak stiction (gesekan statis) motor PW
+        self.pid_pitch.set_tunings(5.0, 0.05, 1.0) 
+        
+        # 5. Kalkulasi PID
+        base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
+        koreksi_pitch = self.pid_pitch.compute(target=temp_pitch, current=pitch_sekarang)
+        
+        # 6. PID MIXING
+        pwm_belakang = base_pwm - koreksi_pitch
+        pwm_depan = base_pwm + koreksi_pitch
+        
+        # 7. ASYMMETRICAL CLAMPING DENGAN HEADROOM (KUNCI KESEIMBANGAN)
+        batas_maksimal_naik = -190 # Menyisakan ~65 PWM untuk koreksi pitch
+        batas_minimal_naik = -100  # Tenaga minimal agar motor tidak 'ngeden' menahan beban
+        
+        def batasi_pwm_naik(pwm_motor):
+            # Batasi Maksimal NAIK
+            if pwm_motor < batas_maksimal_naik:
+                pwm_motor = batas_maksimal_naik
+                
+            # Batasi Minimal NAIK (Mencegah motor berdengung tapi tak kuat ngangkat)
+            elif 0 > pwm_motor > batas_minimal_naik:
+                pwm_motor = batas_minimal_naik
+                
+            # Jika noise membuat sensor menyuruh turun (positif), paksa jadi 0 
+            # agar robot tidak mendadak drop ke bawah saat sedang proses naik
+            elif pwm_motor > 0:
+                pwm_motor = 0
+                
+            return int(pwm_motor)
+            
+        # 8. Eksekusi ke Motor
+        robot.motor.mDorong1 = batasi_pwm_naik(pwm_belakang)
+        robot.motor.mDorong2 = batasi_pwm_naik(pwm_depan)
+        return False
 
     def baliKePosisiAwal(self, robot):
         now = time.time()
