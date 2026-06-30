@@ -188,7 +188,7 @@ class GerakanDasar:
             robot.motor.mDorong1 = 0
             robot.motor.mDorong2 = 0
     
-    def turun_ke_titk(self, robot, target_jarak, temp_pitch=7):
+    def turun_ke_titk(self, robot, target_jarak, temp_pitch=0):
         now = time.time()
         jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
         pitch_sekarang = robot.sensor.pitch_kompas
@@ -217,7 +217,7 @@ class GerakanDasar:
         self.pid_pitch.set_tunings(dinamis_Kp_pitch, 0.0, self.pid_pitch.Kd)
 
         # 2. Toleransi: Berhenti jika nilai 0 bertahan selama 0.1 detik
-        if target_jarak < 6 :
+        if target_jarak <= 6 :
             if abs_error <= 1.0 and abs_error_pitch <= 1.0:
                 robot.motor.mDorong1 = 0
                 robot.motor.mDorong2 = 0
@@ -225,7 +225,7 @@ class GerakanDasar:
                 if getattr(self, 'waktu_patokan', None) is None:
                     self.waktu_patokan = now
                     
-                if now - self.waktu_patokan > 0.1:
+                if now - self.waktu_patokan > 0.05:
                     self.waktu_patokan = None
                     self.pid_tinggi.reset()
                     self.pid_pitch.reset()
@@ -286,56 +286,7 @@ class GerakanDasar:
             
         return False
     
-    
-    
-    def turun_ke_titk_no_pitch(self, robot, target_jarak):
-        jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
-        
-        # 1. Hitung error jarak
-        error_jarak = jarak_sekarang - target_jarak
-        abs_error = abs(error_jarak)
-        
-        # 2. Toleransi: Berhenti jika masuk range aman (+- 1cm)
-        if abs_error <= 1.0:
-            robot.motor.mDorong1 = 0
-            robot.motor.mDorong2 = 0
-            return True
-            
-        # 3. Pisahkan batas maksimum dan minimum tiap roda (lifter)
-        # RODA/LIFTER BELAKANG (mDorong1)
-        max_turun_belakang = 80      # Turun lambat dibantu gravitasi
-        min_turun_belakang = 30      # Angka terkecil turun
-        max_naik_belakang = -255     # Naik kuat melawan gravitasi
-        min_naik_belakang = -200     # Angka terkecil naik
-
-        # RODA/LIFTER DEPAN (mDorong2)
-        max_turun_depan = 80         # Turun lambat dibantu gravitasi
-        min_turun_depan = 30         # Angka terkecil turun
-        max_naik_depan = -238        # Naik kuat melawan gravitasi
-        min_naik_depan = -200        # Angka terkecil naik
-
-        # Helper untuk pemetaan nilai (deceleration)
-        def map_val(x, in_min, in_max, out_min, out_max):
-            x = max(in_min, min(in_max, x))
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-        # 4. Hitung kecepatan masing-masing roda secara bertahap (penurunan signifikan)
-        # Kita map abs_error dari [2.0, 20.0] cm ke [kecepatan_min, kecepatan_max]
-        if error_jarak > 0:
-            # Gerak TURUN (PWM Positif)
-            pwm_belakang = map_val(abs_error, 2.0, 20.0, min_turun_belakang, max_turun_belakang)
-            pwm_depan = map_val(abs_error, 2.0, 20.0, min_turun_depan, max_turun_depan)
-        else:
-            # Gerak NAIK (PWM Negatif)
-            pwm_belakang = map_val(abs_error, 2.0, 20.0, min_naik_belakang, max_naik_belakang)
-            pwm_depan = map_val(abs_error, 2.0, 20.0, min_naik_depan, max_naik_depan)
-
-        # 5. Aplikasikan ke motor dengan pembulatan integer
-        robot.motor.mDorong1 = int(pwm_belakang)
-        robot.motor.mDorong2 = int(pwm_depan)
-        return False    
-            
-    
+ 
     
     
     def stop(self, robot):

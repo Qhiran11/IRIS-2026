@@ -34,21 +34,22 @@ class RakitSenjata:
         elif robot.state.rakit_state == "IDLE":
             robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
             robot.state.rakit_transition_start = now
-            gerak.turun_ke_titk(robot, 5, temp_pitch=7)
-            if jarak_bawah_tengah < 6:
+            if jarak_bawah_tengah <= 7:
                 gerak.stop(robot)
                 self.transition_to("PERSIAPAN", now, robot, gerak)
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
+            gerak.base_speed = 100
+            gerak.max_pwm = 255
             gerak.maju_diagonal_kiri(robot)
-            if (jarak_belakang >= 40):
+            if (jarak_belakang >= 65):
                 self.transition_to("PUTAR1", now, robot, gerak)
                 gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_1", 90)                
 
         elif robot.state.rakit_state == "PUTAR1":
-            gerak.base_speed = 80
-            gerak.max_pwm = 100
+            gerak.base_speed = 100
+            gerak.max_pwm = 255
             if gerak.hadap_sudut(robot, now):
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
         
@@ -57,16 +58,16 @@ class RakitSenjata:
         elif robot.state.rakit_state == "GESER_KESAMPING":
             
             cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping", {})
-            gerak.base_speed = cfg_geser.get("base_speed", 100)
-            gerak.max_pwm = cfg_geser.get("max_pwm", 255)
+            gerak.base_speed = 150
+            gerak.max_pwm = 200
             robot.motor.CapitTombakNaikTurun = 0
-            if gerak.geser_ke_titik_kanan(robot, 40, now):
+            if gerak.geser_ke_titik_kanan(robot, 20 , now):
                 self.transition_to("NAIK_paskan", now, robot, gerak)
         
         elif robot.state.rakit_state == "NAIK_paskan":
             robot.motor.CapitTombakJepit = 1
             # gerak.naikTurunBiasa(robot,18)
-            if gerak.turun_ke_titk(robot, 30): # <--- FUNGSI BARU KITA
+            if gerak.turun_ke_titk(robot, 35): # <--- FUNGSI BARU KITA
             # if jarak_bawah_tengah > 18:
                 # hitung delay 0.1 detik
                 if (now - robot.state.rakit_transition_start > 0.2):
@@ -78,7 +79,7 @@ class RakitSenjata:
             gerak.max_pwm = 50
             robot.motor.CapitTombakNaikTurun = 1
             gerak.mundur(robot)
-            if jarak_belakang < 7:
+            if jarak_belakang < 9:
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)
 
