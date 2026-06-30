@@ -129,7 +129,7 @@ def main():
                     # gerak.geser_ke_titik_kanan(robot, 160, now)
                     # gerak.turun_roda2( robot)
                     # robot.motor.mDorong1 = -200
-                    robot.motor.CapitTombakNaikTurun = 1
+                    # robot.motor.CapitTombakNaikTurun = 1
                     # gerak.naikTurunBiasa(robot, 14)
                     gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
                     # gerak.naikTurunBiasa(robot,21)

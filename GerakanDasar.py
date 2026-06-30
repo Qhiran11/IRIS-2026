@@ -301,6 +301,110 @@ class GerakanDasar:
         robot.motor.mDorong2 = batasi_pwm(pwm_depan)
         return False    
             
+    def turun_ke_titk_no_pitch(self, robot, target_jarak, tun="off"):
+        now = time.time()
+            
+        jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
+        
+        # 1. Hitung error jarak
+        error_jarak = jarak_sekarang - target_jarak
+        abs_error = abs(error_jarak)
+        
+        is_tuning = tun in ["on", "ON", "True", True]
+        
+        if is_tuning:
+            is_running_trial = self._handle_tuning(robot, "turun_ke_titik_no_pitch", target_jarak, jarak_sekarang, now, tolerance=1.0)
+            if not is_running_trial:
+                return False
+            tuner = self._get_tuner(robot, "turun_ke_titik_no_pitch")
+            candidate = tuner.get_next_candidate()
+            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
+            
+            def map_value(x, in_min, in_max, out_min, out_max):
+                x = max(in_min, min(in_max, x))
+                return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+            dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
+            dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
+            self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
+        else:
+            use_tuned = False
+            if hasattr(robot, 'config') and robot.config.data:
+                pid_cfg = robot.config.data.get("pid_values", {}).get("turun_ke_titik_no_pitch")
+                if pid_cfg:
+                    kp_max = pid_cfg.get("kp_max", 10.0)
+                    kp_min = pid_cfg.get("kp_min", 2.0)
+                    ki_min = pid_cfg.get("ki_min", 0.09)
+                    Kd = pid_cfg.get("Kd", 1.0)
+                    
+                    def map_value(x, in_min, in_max, out_min, out_max):
+                        x = max(in_min, min(in_max, x))
+                        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+                    dinamis_Kp = map_value(abs_error, 3, 30, kp_min, kp_max)
+                    dinamis_Ki = map_value(abs_error, 1, 10, ki_min, 0.0)
+                    self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
+                    use_tuned = True
+                    
+            if not use_tuned:
+                # =========================================================
+                # CONTINUOUS ADAPTIVE TUNING (JARAK & WAKTU)
+                # =========================================================
+                def map_value(x, in_min, in_max, out_min, out_max):
+                    x = max(in_min, min(in_max, x))
+                    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+                # A. Tuning Kp Berdasarkan Jarak
+                dinamis_Kp = map_value(abs_error, 3, 30, 2.0, 10.0)
+                
+                # B. Tuning Ki Berdasarkan Jarak & Waktu (Mencegah macet 1 menit)
+                dinamis_Ki = map_value(abs_error, 1, 10, 0.09, 0.0)
+                
+                # Terapkan nilai dinamis ke objek PID tinggi
+                self.pid_tinggi.set_tunings(dinamis_Kp, dinamis_Ki, 1.0) 
+                # =========================================================
+
+        # 2. Toleransi: Berhenti jika masuk range aman (+- 1cm)
+        if not is_tuning:
+            if abs_error <= 1:
+                robot.motor.mDorong1 = 0
+                robot.motor.mDorong2 = 0
+                self.pid_tinggi.reset()
+                return True
+            
+        # 3. Hitung PID Ketinggian (Menghasilkan Base PWM)
+        base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
+        
+        # 5. NO PITCH MIXING
+        pwm_belakang = base_pwm
+        pwm_depan = base_pwm
+        
+        # 6. ASYMMETRICAL CLAMPING
+        batas_maksimal_turun = 80    # Turun lambat dibantu gravitasi
+        batas_maksimal_naik = -255   # Naik kuat melawan gravitasi
+        batas_minimal_turun = 30     # Angka terkecil turun
+        batas_minimal_naik = -200    # Angka terkecil kuat ngangkat
+        
+        def batasi_pwm(pwm_motor):
+            # Clamping Maksimal
+            if pwm_motor > batas_maksimal_turun:
+                pwm_motor = batas_maksimal_turun
+            elif pwm_motor < batas_maksimal_naik:
+                pwm_motor = batas_maksimal_naik
+                
+            # Deadband Compensation
+            if 0 < pwm_motor < batas_minimal_turun:
+                pwm_motor = batas_minimal_turun
+            elif 0 > pwm_motor > batas_minimal_naik:
+                pwm_motor = batas_minimal_naik
+                
+            return int(pwm_motor)
+
+        # 7. Aplikasikan ke motor
+        robot.motor.mDorong1 = batasi_pwm(pwm_belakang)
+        robot.motor.mDorong2 = batasi_pwm(pwm_depan)
+        return False    
+            
     
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
@@ -410,7 +514,7 @@ class GerakanDasar:
                 elif func_name == "geser_ke_titik_kiri":
                     initial_p = [10.0, 1.0, 0.2, 1.0]
                     initial_dp = [1.0, 0.2, 0.03, 0.2]
-                elif func_name == "turun_ke_titik":
+                elif func_name in ["turun_ke_titik", "turun_ke_titik_no_pitch"]:
                     initial_p = [10.0, 2.0, 0.09, 1.0]
                     initial_dp = [1.0, 0.3, 0.02, 0.2]
                 else:
@@ -423,7 +527,14 @@ class GerakanDasar:
                     pid_cfg.get("ki_min", 0.1),
                     pid_cfg.get("Kd", 1.0)
                 ]
-                initial_dp = [1.0, 0.2, 0.02, 0.2]
+                if func_name == "geser_ke_titik_kanan":
+                    initial_dp = [1.5, 0.3, 0.3, 0.3]
+                elif func_name == "geser_ke_titik_kiri":
+                    initial_dp = [2.5, 0.3, 0.06, 0.3]
+                elif func_name in ["turun_ke_titik", "turun_ke_titik_no_pitch"]:
+                    initial_dp = [2.5, 0.5, 0.03, 0.3]
+                else:
+                    initial_dp = [2.0, 0.5, 0.05, 0.3]
                 
             self.tuners[func_name] = PIDTwiddleTuner(initial_p, initial_dp, name=func_name)
         return self.tuners[func_name]
@@ -437,7 +548,9 @@ class GerakanDasar:
                 "start_time": None,
                 "approach_start_time": None,
                 "reset_detect_time": None,
-                "waktu_patokan": None
+                "waktu_patokan": None,
+                "prev_error": None,
+                "prev_time": None
             }
             
         t_state = self.tuning_states[func_name]
@@ -445,7 +558,7 @@ class GerakanDasar:
         
         # Tentukan jarak ketika robot dianggap mulai mendekati target
         # Roda: 15 cm, Tinggi (lifter): 5 cm
-        approach_threshold = 5.0 if func_name == "turun_ke_titik" else 15.0
+        approach_threshold = 5.0 if func_name in ["turun_ke_titik", "turun_ke_titik_no_pitch"] else 15.0
         
         if t_state["state"] == "IDLE":
             if abs_error > 15.0:
@@ -453,6 +566,8 @@ class GerakanDasar:
                 t_state["start_time"] = now
                 t_state["approach_start_time"] = None
                 t_state["waktu_patokan"] = None
+                t_state["prev_error"] = abs_error
+                t_state["prev_time"] = now
                 print(f"\n[TUNING {func_name}] Memulai Uji Coba #{tuner.trial_count + 1}...")
                 candidate = tuner.get_next_candidate()
                 print(f"[TUNING {func_name}] Mencoba Batas PID: kp_max={candidate[0]:.4f}, kp_min={candidate[1]:.4f}, ki_min={candidate[2]:.4f}, Kd={candidate[3]:.4f}")
@@ -917,7 +1032,7 @@ class GerakanDasar:
                 self.stateReturn = "geser ke titik kiri"
                
         elif self.stateReturn == "geser ke titik kiri":
-            if self.geser_ke_titik_kiri(robot, 97, now):
+            if self.geser_ke_titik_kiri(robot, 57, now):
                 self.stop(robot)
                 self.stateReturn = "HadapSudut"
                 return True 

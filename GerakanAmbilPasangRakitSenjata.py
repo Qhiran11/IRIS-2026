@@ -37,42 +37,26 @@ class RakitSenjata:
             if gerak.turun_ke_titk(robot, 5):
                 gerak.stop(robot)
                 self.transition_to("PERSIAPAN", now, robot, gerak)
-                
-        
-        elif robot.state.rakit_state == "PENYEIMBANGAN":
-            gerak.penyeimbang(robot, now)
-            pitch_sekarang = robot.sensor.pitch_kompas
-            if (pitch_sekarang == 1 or pitch_sekarang == -1 or pitch_sekarang == 0): # Delay stabilisasi
-                print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
-                self.transition_to("PERSIAPAN", now, robot, gerak)
-            else:
-                robot.state.rakit_transition_start = now
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
+            gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
             gerak.maju_diagonal_kiri(robot)
             if (jarak_belakang >= 35):
                 self.transition_to("PUTAR1", now, robot, gerak)
                 gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_1", 90)                
 
         elif robot.state.rakit_state == "PUTAR1":
-            gerak.hadap_sudut(robot, now)
-            if (robot.sensor.kompas >= gerak.target_angle - 1 and robot.sensor.kompas <= gerak.target_angle + 1): # -90 derajat ± 1
-                if (now - robot.state.rakit_transition_start > 0.1): # Delay stabilisasi
-                    print("[SENJATA] Menghadap 90 derajat. Mulai Mendekat...")
-                    self.transition_to("GESER_KESAMPING", now, robot, gerak)
-        
-        elif robot.state.rakit_state == "MENDEKAT":
-            cfg_dekat = robot.config.data.get("rakit_senjata", {}).get("mendekat", {})
-            gerak.base_speed = cfg_dekat.get("base_speed") # Kecepatan pelan
-            gerak.max_pwm = cfg_dekat.get("max_pwm")
-            if gerak.mundur_ke_titik(robot, target_jarak, now) or target_jarak > jarak_belakang:
-                robot.state.rakit_transition_start = now
+            gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
+            gerak.base_speed = 80
+            gerak.max_pwm = 100
+            if gerak.hadap_sudut(robot, now):
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
         
 
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
+            gerak.turun_ke_titk(robot, robot.config.data.get("umum", {}).get("Tinggi"), tun="off")
             cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping", {})
             gerak.base_speed = cfg_geser.get("base_speed") # Kecepatan pelan
             gerak.max_pwm = cfg_geser.get("max_pwm")
@@ -81,10 +65,9 @@ class RakitSenjata:
                 self.transition_to("NAIK_paskan", now, robot, gerak)
         
         elif robot.state.rakit_state == "NAIK_paskan":
-            
             robot.motor.CapitTombakJepit = 1
             # gerak.naikTurunBiasa(robot,18)
-            if gerak.turun_ke_titk(robot, 30):
+            if gerak.turun_ke_titk_no_pitch(robot, 29):
             # if jarak_bawah_tengah > 18:
                 # hitung delay 0.1 detik
                 if (now - robot.state.rakit_transition_start > 0.1):
