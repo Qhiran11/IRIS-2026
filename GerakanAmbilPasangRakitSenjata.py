@@ -115,7 +115,7 @@ class RakitSenjata:
                     gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_2", -90)
                     self.transition_to("PUTAR_NEG_90", now, robot, gerak)
             else:
-                if cfg_geser < 35:
+                if cfg_geser < 20:
                     gerak.maju_diagonal_kiri(robot)
                 else:
                     gerak.mundur_ke_titik(robot, 20, now)
