@@ -5,6 +5,7 @@ import json
 import random
 import string
 import time
+import os
 
 class TelemetryServer:
     def __init__(self, port=5005):
@@ -16,6 +17,11 @@ class TelemetryServer:
         self.client_socket = None
         self.latest_data = None
         self.data_lock = threading.Lock()
+        self.socket_lock = threading.Lock()
+
+        # Tentukan path absolut untuk config.json
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_path = os.path.join(base_dir, "MainFile", "data_robot", "config.json")
 
         # Setup UDP untuk Broadcast (Agar komputer monitor menemukan IP Jetson)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,8 +62,87 @@ class TelemetryServer:
                 conn, addr = self.tcp_socket.accept()
                 print(f"[TELEMETRI] Komputer Monitor Terhubung dari IP: {addr[0]}")
                 self.client_socket = conn
+                threading.Thread(target=self._baca_pesan_client, args=(conn,), daemon=True).start()
             except Exception:
                 pass
+
+    def _send_to_client(self, conn, data):
+        try:
+            pesan = json.dumps(data) + "\n"
+            with self.socket_lock:
+                conn.sendall(pesan.encode('utf-8'))
+        except Exception as e:
+            print(f"[TELEMETRI] Gagal mengirim pesan ke client: {e}")
+
+    def _baca_pesan_client(self, conn):
+        buffer = ""
+        while self.berjalan and self.client_socket == conn:
+            try:
+                data = conn.recv(4096).decode('utf-8')
+                if not data:
+                    break
+                buffer += data
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        cmd = json.loads(line)
+                        self._proses_perintah(conn, cmd)
+                    except json.JSONDecodeError:
+                        print("[TELEMETRI] Perintah dari client bukan JSON valid")
+            except Exception as e:
+                break
+        print("[TELEMETRI] Koneksi baca client terputus.")
+
+    def _proses_perintah(self, conn, cmd):
+        cmd_type = cmd.get("type")
+        if cmd_type == "get_config":
+            try:
+                if os.path.exists(self.config_path):
+                    with open(self.config_path, 'r') as f:
+                        config_data = json.load(f)
+                    response = {
+                        "type": "config_data",
+                        "status": "success",
+                        "config": config_data
+                    }
+                else:
+                    response = {
+                        "type": "config_data",
+                        "status": "error",
+                        "message": f"File config tidak ditemukan di {self.config_path}"
+                    }
+            except Exception as e:
+                response = {
+                    "type": "config_data",
+                    "status": "error",
+                    "message": str(e)
+                }
+            self._send_to_client(conn, response)
+            
+        elif cmd_type == "update_config":
+            new_config = cmd.get("config")
+            try:
+                if not isinstance(new_config, dict):
+                    raise ValueError("Konfigurasi harus berupa object JSON/dict")
+                
+                with open(self.config_path, 'w') as f:
+                    json.dump(new_config, f, indent=4)
+                
+                response = {
+                    "type": "update_status",
+                    "status": "success",
+                    "message": "Konfigurasi robot berhasil diperbarui dan disimpan!"
+                }
+            except Exception as e:
+                response = {
+                    "type": "update_status",
+                    "status": "error",
+                    "message": f"Gagal memperbarui konfigurasi: {str(e)}"
+                }
+            self._send_to_client(conn, response)
 
     def _kirim_data_loop(self):
         while self.berjalan:
@@ -72,7 +157,8 @@ class TelemetryServer:
                     try:
                         # Ubah ke JSON dan kirim ke komputer monitor
                         pesan = json.dumps(data_to_send) + "\n"
-                        client.sendall(pesan.encode('utf-8'))
+                        with self.socket_lock:
+                            client.sendall(pesan.encode('utf-8'))
                     except Exception:
                         # Jika komputer monitor terputus
                         try:
