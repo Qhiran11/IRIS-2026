@@ -121,9 +121,9 @@ class SensorData:
             
             
             # Pemetaan sensor ultrasonik utama
-            self.ultrasonic_depan    = arr[1]  # S4 (Depan)
+            self.ultrasonic_depan    = arr[3]  # S4 (Depan)
             self.ultrasonic_kiri     = arr[2]  # S7 (Kiri via UART)
-            self.ultrasonic_kanan    = arr[3]  # S2 (Kanan)
+            self.ultrasonic_kanan    = arr[1]  # S2 (Kanan)
             self.ultrasonic_belakang = arr[4]  # S5 (Belakang)
 
             # Tombol data dari Nano

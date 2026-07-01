@@ -57,10 +57,7 @@
             "max_pwm": 70,
             "target_mundur": 30
         },
-        "geser_samping": {
-            "base_speed": 45,
-            "max_pwm": 65
-        },
+        "geser_samping": 34,
         "mulai_jepit": {
             "base_speed": 40,
             "max_pwm": 50,
