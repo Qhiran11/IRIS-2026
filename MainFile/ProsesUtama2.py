@@ -120,25 +120,14 @@ def main():
                 if not is_running:
                     gerak.target_angle = 0
                     gerak.stop(robot)
-                    # robot.motor.CapitTombakJepit = 0
-                    # robot.motor.mDorong1 = 255 # BELAKANG
-                    # robot.motor.mDorong2 = 255 # DEPAN
-                    # gerak.penyeimbang(robot, now)
-                    
+
                     
                     # gerak.geser_ke_titik_kanan(robot, 160, now)
-                    # gerak.turun_roda2( robot)
-                    # robot.motor.mDorong1 = -200
-                    # robot.motor.CapitTombakNaikTurun = 1
-                    # gerak.naikTurunBiasa(robot, 14)
-                    # gerak.naikTurunBiasa(robot,21)
                     # gerak.mundur(robot)
                     
                     data_keluar = robot.motor.get_array_output()                    
                     writer.kirim_data(data_keluar)
-                    # robot.motor.CapitTombakNaikTurun = 1
-                    # robot.motor.relayCapitKFSJepit = 0
-                    # LOGIKA: Tahan di sini hingga tombol start ditekan
+
                     if robot.sensor.tombol_start == 0:
                         print("\n[SYSTEM] TOMBOL START DITEKAN! Memulai program...")
                         robot.ROBOT_MAIN_STATE = "START"
@@ -188,11 +177,6 @@ def main():
                         gerak.stop(robot)
                         if (now - robot.state.main_then > 0.1):
                             robot.state.main_state = "GO"
-                            # robot.state.main_state = "GOGO"
-                            # robot.state.main_state = "NAIK"
-                            # robot.state.main_state = "TURUN"
-                            
-                            # robot.state.main_state = "AMBILKFS"
                             robot.state.main_then = now
                 
                     elif robot.state.main_state == "GO":
@@ -202,81 +186,8 @@ def main():
                             robot.state.main_state = "FASE2"
                             robot.state.main_then = now
                             is_running = False
+                            continue
                             
-                    elif robot.state.main_state == "GOGO":
-                        
-                        selesai = masukMainhua._proses_ke_tengah(robot, gerak, now)
-                        if selesai:
-                            robot.state.main_state = "NAIK"
-                            gerak.stop(robot)
-                            robot.state.main_then = now
-
-                    elif robot.state.main_state == "AMBILKFS":
-                        selesai = ambil_kfs.AmbilKFS(robot, gerak, now)
-                        if selesai:
-                            if robot.totalNaik == 1:
-                                robot.state.main_state = "NAIK"
-                            else:
-                                robot.state.main_state = "PUTAR"
-                            # return
-        
-                    elif robot.state.main_state == "NAIK":
-                        selesai = masukMainhua._proses_naik(robot, gerak)
-                        
-                        if selesai:
-                            robot.totalNaik += 1
-                            print("[NAVIGASI] Naik Selesai.")
-                            hutan.step_selesai() 
-                            robot.state.main_state = "AMBILKFS" 
-
-                    elif robot.state.main_state == "PUTAR":
-                        gerak.target_angle = -90
-                        selesai = gerak.hadap_sudut(robot, now)
-                        if selesai:
-                            robot.state.main_state = "TURUN"
-
-                    elif robot.state.main_state == "TURUN":
-                        selesai = masukMainhua._proses_turun(robot, gerak)
-                        if selesai:
-                            print("[NAVIGASI] Naik Selesai.")
-                            robot.state.main_state = "PUTAR1"
-                    elif robot.state.main_state == "PUTAR1":
-                        gerak.target_angle = 0
-                        selesai = gerak.hadap_sudut(robot, now)
-                        if selesai:
-                            robot.state.main_state = "NAIK1"
-                    
-                    elif robot.state.main_state == "NAIK1":
-                        selesai = masukMainhua._proses_naik2(robot, gerak)
-                        if selesai:
-                            robot.state.main_state = "PUTAR2"
-
-                    elif robot.state.main_state == "PUTAR2":
-                        gerak.target_angle = -180
-                        selesai = gerak.hadap_sudut(robot, now)
-                        if selesai:
-                            robot.state.main_state = "TURUN1"
-
-                    elif robot.state.main_state == "TURUN1":
-                        selesai = masukMainhua._proses_turun(robot, gerak)
-                        if selesai:
-                            robot.state.main_state = "TURUN2" 
-
-                    elif robot.state.main_state == "TURUN2":
-                        selesai = masukMainhua._proses_turun(robot, gerak)
-                        if selesai:
-                            robot.state.main_state = "PUTAR3"
-
-                    elif robot.state.main_state == "PUTAR3":
-                        gerak.target_angle = 0
-                        selesai = gerak.hadap_sudut(robot, now)
-                        if selesai:
-                            robot.state.main_state = "ZONA3START"
-                    
-                    elif robot.state.main_state == "ZONA3START":
-                        selesai = zona3.logic_zona3(robot, gerak, now)
-                        if selesai:
-                            robot.state.main_state = "FINISHED"
                 
                 
                 # 4. EKSTRAK DAN KIRIM KE ARDUINO DUE (Hanya dieksekusi jika sedang is_running)
