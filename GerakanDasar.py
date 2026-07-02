@@ -632,97 +632,93 @@ class GerakanDasar:
     
     
     
-    def geser_ke_titik_kiri(self, robot, target_jarak, now, tun="off"):
+    def geser_ke_titik_kiri(self, robot, target_jarak, now):
         robot.state.gerak_dasar_aktif = "geser ke titik kiri"
+        
         jarak_sekarang = robot.sensor.ultrasonic_kiri
+        sudut_sekarang = robot.sensor.kompas
         
-        # ====================================================
-        # NOISE FILTER (OUTLIER REJECTION)
-        # ====================================================
-        if jarak_sekarang <= 0 or jarak_sekarang == -1:
-            if self.last_valid_jarak_kiri is not None:
-                jarak_sekarang = self.last_valid_jarak_kiri
-
-        if self.last_valid_jarak_kiri is not None:
-            if abs(jarak_sekarang - self.last_valid_jarak_kiri) > self.noise_threshold:
-                # Abaikan nilai noise (buang), tetap gunakan nilai terakhir yang masuk akal
-                jarak_sekarang = self.last_valid_jarak_kiri
-            else:
-                self.last_valid_jarak_kiri = jarak_sekarang
-        else:
-            if jarak_sekarang > 0:
-                self.last_valid_jarak_kiri = jarak_sekarang
-        # ====================================================
-
-        # Karena sudah difilter di atas, kita bisa lebih aman menggunakan jarak_sekarang
-        if jarak_sekarang <= 0 or jarak_sekarang == -1:
-            self.kiri(robot)
+        # Proteksi nilai ekstrem
+        if jarak_sekarang > target_jarak + 50 and target_jarak > 200:
+            self.stop(robot)
             return False
+
+        if jarak_sekarang <= 0:
+            self.stop(robot)
+            return False
+        
+        # Hitung error
+        error_jarak = jarak_sekarang - target_jarak
+        abs_error = abs(error_jarak)
+        
+        error_sudut = sudut_sekarang - self.target_angle
+        abs_error_sudut = abs(error_sudut)
+        
+        # Tentukan batas toleransi sudut yang bisa diterima (misal 2.0 derajat)
+        toleransi_sudut_maks = 2.0 
+
+        # 1. TOLERANSI PATOKAN (Jarak pas DAN Sudut pas)
+        if (target_jarak - 3 <= jarak_sekarang <= target_jarak + 3) and (abs_error_sudut <= toleransi_sudut_maks):
+            self.stop(robot) # Segera matikan motor
             
-        abs_error = abs(jarak_sekarang - target_jarak)
-        
-        is_tuning = tun in ["on", "ON", "True", True]
-        
-        if is_tuning:
-            is_running_trial = self._handle_tuning(robot, "geser_ke_titik_kiri", target_jarak, jarak_sekarang, now, tolerance=2.0)
-            if not is_running_trial:
-                return False
-            tuner = self._get_tuner(robot, "geser_ke_titik_kiri")
-            candidate = tuner.get_next_candidate()
-            kp_max, kp_min, ki_min, Kd = candidate[0], candidate[1], candidate[2], candidate[3]
-            dinamis_Kp = self._map_value(abs_error, 5, 30, kp_min, kp_max)
-            dinamis_Ki = self._map_value(abs_error, 1, 10, ki_min, 0.0)
-            self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
+            if getattr(self, 'waktu_patokan', None) is None:
+                self.waktu_patokan = now
+                
+            if now - self.waktu_patokan > 0.3:
+                self.waktu_patokan = None  
+                self.pid_kompas2.reset()
+                self.last_valid_jarak_kiri = None
+                print(f"==> [SELESAI] Robot mencapai titik patokan KIRI! (Err Jarak: {error_jarak:.1f}, Err Sudut: {error_sudut:.1f})")
+                return True
+                
+            return False # Kunci eksekusi selama masa tunggu stabilisasi
         else:
-            use_tuned = False
-            if hasattr(robot, 'config') and robot.config.data:
-                pid_cfg = robot.config.data.get("pid_values", {}).get("geser_ke_titik_kiri")
-                if pid_cfg:
-                    kp_max = pid_cfg.get("kp_max", 10.0)
-                    kp_min = pid_cfg.get("kp_min", 1.0)
-                    ki_min = pid_cfg.get("ki_min", 0.2)
-                    Kd = pid_cfg.get("Kd", 1.0)
-                    
-                    dinamis_Kp = self._map_value(abs_error, 5, 30, kp_min, kp_max)
-                    dinamis_Ki = self._map_value(abs_error, 1, 10, ki_min, 0.0)
-                    self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, Kd)
-                    use_tuned = True
-            
-            if not use_tuned:
-                # --- ADAPTIVE TUNING PID JARAK ---
-                dinamis_Kp = self._map_value(abs_error, 5, 30, 1.0, 10.0)
-                dinamis_Ki = self._map_value(abs_error, 1, 10, 0.2, 0.0)
-                self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
-                # ---------------------------------
+            self.waktu_patokan = None
 
-        # Batasi kecepatan maksimal secara dinamis mendekati target (berlaku untuk semua jarak)
-        current_limit = self.base_speed
-        if abs_error <= 30.0:
-            current_limit = self._map_value(abs_error, 3, 30, 20, self.base_speed)
+        # =========================================================
+        # KALKULASI KECEPATAN (TANPA PID JARAK)
+        # =========================================================
+        def map_value(x, in_min, in_max, out_min, out_max):
+            x = max(in_min, min(in_max, x))
+            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
-        kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
-        speed_geser = self.pid_jarak.compute(target_jarak, jarak_sekarang)
-            
-        speed_geser = max(-current_limit, min(current_limit, speed_geser))
+        # 2. Kecepatan Geser Linear berdasarkan jarak
+        # Semakin dekat ke target (error mengecil), kecepatan menurun sampai 20
+        speed_geser = map_value(abs_error, 1.0, 30.0, 20.0, self.base_speed)
         
-        # Eksekusi motor
-        self._apply_motor(robot, 
-                          speed_geser - kor_sudut,  -speed_geser - kor_sudut, 
-                         -speed_geser + kor_sudut,   speed_geser + kor_sudut)
-                          
-        if not is_tuning:
-            if target_jarak - 2 <= jarak_sekarang <= target_jarak + 2:
-                self.stop(robot)
-                if getattr(self, 'waktu_patokan', None) is None:
-                    self.waktu_patokan = now
-                if now - self.waktu_patokan > 0.1:
-                    self.waktu_patokan = None
-                    self.pid_jarak.reset()
-                    self.pid_kompas2.reset()
-                    self.last_valid_jarak_kiri = None  # <--- SANGAT PENTING: Reset memori filter
-                    return True
-            else:
-                self.waktu_patokan = None
+        # Balikkan arah jika jarak sekarang lebih kecil dari target (kebablasan)
+        if error_jarak < 0:
+            speed_geser = -speed_geser
+
+        # 3. PID Sudut (Wajib untuk menahan bodi melintir)
+        dinamis_Kp_sudut = map_value(abs_error_sudut, 1.0, 10.0, 0.5, 5.0) 
+        self.pid_kompas2.set_tunings(dinamis_Kp_sudut, 0.0, self.pid_kompas2.Kd)
+        kor_sudut = self.pid_kompas2.compute(target=self.target_angle, current=sudut_sekarang)
+        
+        # Heading Priority (Rem kecepatan geser jika robot miring berlebihan)
+        reduksi_geser = 1.0
+        if abs_error_sudut > 10.0:
+            reduksi_geser = 0.2  # Pangkas 80% kecepatan geser
+        elif abs_error_sudut > 5.0:
+            reduksi_geser = 0.5  # Pangkas 50% kecepatan geser
+            
+        speed_geser *= reduksi_geser
+        
+        # 4. Aplikasikan ke Motor Omni/Mecanum (DIBALIK DARI FUNGSI KANAN)
+        # Geser Kiri: Depan Kiri (+), Depan Kanan (-), Belakang Kiri (-), Belakang Kanan (+)
+        self._apply_motor(
+            robot, 
+             speed_geser - kor_sudut,   
+            -speed_geser - kor_sudut,   
+            -speed_geser + kor_sudut,   
+             speed_geser + kor_sudut    
+        )
+        
+        # Telemetri
+        if not hasattr(self, 'last_print_time'): self.last_print_time = now
+        if now - self.last_print_time > 0.1:
+            print(f"[GESER KIRI NON-PID] Jarak: {jarak_sekarang} (Err: {error_jarak:.1f}) | ErrSudut: {error_sudut:.1f} | Speed: {speed_geser:.1f}")
+            self.last_print_time = now
             
         return False
     

@@ -43,12 +43,21 @@ class RakitSenjata:
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
+            cfg_arena = robot.config.data.get("rakit_senjata", {}).get("arena", {})
             gerak.base_speed = 160
             gerak.max_pwm = 190
-            gerak.maju_diagonal_kiri(robot)
+            
+            if cfg_arena == "merah":
+                gerak.maju_diagonal_kiri(robot)
+            elif cfg_arena == "biru":
+                gerak.maju_diagonal_kanan(robot)
+            
             if (jarak_belakang >= 40):
                 self.transition_to("PUTAR1", now, robot, gerak)
-                gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_1", 90)                
+                if cfg_arena == "merah":
+                    gerak.target_angle = 90
+                elif cfg_arena == "biru":
+                    gerak.target_angle = -90
 
         elif robot.state.rakit_state == "PUTAR1":
             gerak.base_speed = 100
@@ -63,27 +72,17 @@ class RakitSenjata:
             gerak.base_speed = 30
             gerak.max_pwm = 30
             robot.motor.CapitTombakNaikTurun = 0
-            if gerak.geser_ke_titik_kanan(robot, cfg_geser, now):
-                gerak.stop(robot)
-                self.transition_to("MULAI_JEPIT", now, robot, gerak)
+            if cfg_arena == "merah":
+                if gerak.geser_ke_titik_kanan(robot, cfg_geser, now):
+                    gerak.stop(robot)
+                    self.transition_to("MULAI_JEPIT", now, robot, gerak)
+            elif cfg_arena == "biru":
+                if gerak.geser_ke_titik_kiri(robot, cfg_geser, now):
+                    gerak.stop(robot)
+                    self.transition_to("MULAI_JEPIT", now, robot, gerak)
+            
         
-        elif robot.state.rakit_state == "GESER_KESAMPING2":
-            # Pastikan cfg_geser mengembalikan nilai angka, misal 50 (bukan dictionary)
-            
-            
-            gerak.base_speed = 30
-            gerak.max_pwm = 30
-            robot.motor.CapitTombakNaikTurun = 0
-            
-            if (cfg_geser - 1) <= jarak_kanan <= (cfg_geser + 1):
-                gerak.stop(robot)
-                self.transition_to("MULAI_JEPIT", now, robot, gerak)
-            elif jarak_kanan < cfg_geser + 1:
-                gerak.kiri(robot) 
-            elif jarak_kanan > cfg_geser - 1:
-                gerak.kanan(robot)
-                
-
+       
         elif robot.state.rakit_state == "MULAI_JEPIT":
             gerak.base_speed = 30
             gerak.max_pwm = 40
