@@ -21,6 +21,7 @@ class RakitSenjata:
         jarak_bawah_tengah = robot.sensor.ultrasonic_bawah_tengah
         target_jarak = 26
         cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping",{})
+        cfg_arena = robot.config.data.get("rakit_senjata", {}).get("arena", {})
         proxi = robot.sensor.proxi_belakang
 
         # ---------------------------------------------------------
@@ -43,7 +44,6 @@ class RakitSenjata:
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
-            cfg_arena = robot.config.data.get("rakit_senjata", {}).get("arena", {})
             gerak.base_speed = 160
             gerak.max_pwm = 190
             
@@ -68,7 +68,6 @@ class RakitSenjata:
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
             
-            cfg_arena = robot.config.data.get("rakit_senjata", {}).get("arena", {})
             gerak.base_speed = 30
             gerak.max_pwm = 30
             robot.motor.CapitTombakNaikTurun = 0
@@ -108,23 +107,25 @@ class RakitSenjata:
             gerak.base_speed = 100
             gerak.max_pwm = 250
             
-            if jarak_belakang >= 30: # target 30 cm (52cm sensor belakang)
+            if jarak_belakang >= 20: # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
-                if (now - robot.state.rakit_transition_start > 0.1):
-                    print("[SENJATA] Tiba di posisi 30cm.")
-                    gerak.target_angle = robot.config.data.get("rakit_senjata", {}).get("putar", {}).get("target_angle_2", -90)
-                    self.transition_to("PUTAR_NEG_90", now, robot, gerak)
+                self.transition_to("PUTAR_NEG_90", now, robot, gerak)
             else:
-                if cfg_geser < 20:
-                    gerak.maju_diagonal_kiri(robot)
+                if cfg_arena == "biru":
+                    gerak.maju_diagonal_kanan(robot)
                 else:
-                    gerak.mundur_ke_titik(robot, 100, now)
-                robot.state.rakit_transition_start = now
+                    if cfg_geser < 20:
+                        gerak.maju_diagonal_kiri(robot)
+                    else:
+                        gerak.mundur_ke_titik(robot, 100, now)
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":
             gerak.base_speed = 110
             gerak.max_pwm = 120
-           
+            if cfg_arena == "merah":
+                gerak.target_angle = -90
+            elif cfg_arena == "biru":
+                gerak.target_angle = 90
             if  gerak.hadap_sudut(robot, now):
                 self.transition_to("DELAY_1", now, robot, gerak)
 
@@ -158,3 +159,8 @@ class RakitSenjata:
             return True
 
         return False
+
+
+
+
+        
