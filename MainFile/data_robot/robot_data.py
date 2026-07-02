@@ -72,6 +72,8 @@ class SensorData:
         self.tombol_start = 1
         self.tombol_reset = 1
         self.cekTombak = 0
+
+        self.proxi_belakang = 0
         # --- DATA SENSOR (30% Bilangan Bulat / Int) ---
         self.switch = 0
 
@@ -135,6 +137,7 @@ class SensorData:
             self.ultrasonic_bawah_tengah   = arr[8]  # S1 (Bawah Tengah)
             self.ultrasonic_bawah_belakang = arr[9]  # S6 (Bawah Belakang)
             # self.pitch_kompas = arr[10]  # <--- Ini dihapus/diganti dengan logika di atas
+            self.proxi_belakang = arr[11]
 
 
 

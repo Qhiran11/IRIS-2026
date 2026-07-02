@@ -21,6 +21,7 @@ class RakitSenjata:
         jarak_bawah_tengah = robot.sensor.ultrasonic_bawah_tengah
         target_jarak = 26
         cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping",{})
+        proxi = robot.sensor.proxi_belakang
 
         # ---------------------------------------------------------
         # STATE MACHINE MENGGUNAKAN IF-ELIF
@@ -89,7 +90,7 @@ class RakitSenjata:
             robot.motor.CapitTombakNaikTurun = 1
             # gerak.mundur(robot)
             gerak.mundur_ke_titik(robot, 11, now)
-            if jarak_belakang <= 12:
+            if jarak_belakang <= 12 or proxi == 0:
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)
 

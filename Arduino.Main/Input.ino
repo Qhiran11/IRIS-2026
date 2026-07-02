@@ -20,6 +20,7 @@ int16_t jarak_filter[NUM_TARGET_SENSORS] = {0};
 unsigned long lastUltra = 0;
 unsigned long lastComm = 0;
 uint8_t current_sensor = 0;
+int proxi = 43;
 
 // Variabel Data Eksternal
 int nanoDataA = 1;
@@ -159,6 +160,7 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000); // I2C Fast Mode
   readCMPS12();
+  pinMode(proxi, INPUT); 
 
   for (int k = 0; k < NUM_TARGET_SENSORS; k++) {
     pinMode(trigPins[k], OUTPUT);
@@ -228,7 +230,7 @@ void loop() {
     data_kirim[8] = jarak_filter[0]; // S1 (Bawah Tengah)
     data_kirim[9] = jarak_filter[5]; // S6 (Bawah Belakang)
     data_kirim[10] = cmpsPitch;      // Pitch
-    data_kirim[11] = 0;
+    data_kirim[11] = digitalRead(proxi);
     data_kirim[12] = 0;
     data_kirim[13] = 0;
     data_kirim[14] = 0;
