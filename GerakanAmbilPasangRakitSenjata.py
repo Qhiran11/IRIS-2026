@@ -68,7 +68,7 @@ class RakitSenjata:
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
             
-            cfg_geser = robot.config.data.get("rakit_senjata", {}).get("geser_samping", {})
+            cfg_arena = robot.config.data.get("rakit_senjata", {}).get("arena", {})
             gerak.base_speed = 30
             gerak.max_pwm = 30
             robot.motor.CapitTombakNaikTurun = 0
