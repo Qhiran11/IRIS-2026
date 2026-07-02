@@ -113,8 +113,9 @@ class PIDTwiddleTuner:
 class GerakanDasar:
     def __init__(self):
         self.pid_kompas = PIDController(Kp=5.0, Ki=0.001, Kd=1.0)
-        self.pid_kompas2 = PIDController(Kp=5.0, Ki=0.001, Kd=1.0)
-        self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=1.0) 
+        self.pid_jarak = PIDController(Kp=5.0, Ki=0.001, Kd=1.0)
+        self.pid_kompas2 = PIDController(Kp=5.0, Ki=0.005, Kd=1.0)
+        self.pid_jarak2 = PIDController(Kp=2.0, Ki=0.01, Kd=9.0) 
 
         self.pid_tinggi = PIDController(Kp=10.0, Ki=0.0, Kd=0.0)
         self.pid_pitch = PIDController(Kp=4.0, Ki=0.0, Kd=0.0)
@@ -177,18 +178,6 @@ class GerakanDasar:
             robot.motor.mDorong1 = 0
             robot.motor.mDorong2 = 0
     
-    
-    
-    def naikTurunBiasa (self, robot, target):
-        jarak = robot.sensor.ultrasonic_bawah_tengah
-        if jarak < target:
-            robot.motor.mDorong1 = -255
-            robot.motor.mDorong2 = -255
-        else:
-            robot.motor.mDorong1 = 0
-            robot.motor.mDorong2 = 0
-    
-
     
     def stop(self, robot):
         robot.state.gerak_dasar_aktif = "STOP"
@@ -268,12 +257,7 @@ class GerakanDasar:
         self._apply_motor(robot, 
                           0 + kor, -self.base_speed + kor, 
                           -self.base_speed - kor, 0 - kor)
-    # =========================================================================
     
-    # Helper fungsi map diletakkan di luar (atau di dalam class) agar rapi jika memungkinkan,
-    # namun di sini saya sematkan langsung agar Anda bisa sekadar Copy-Paste dengan aman.
-    # Helper fungsi map diletakkan di luar (atau di dalam class) agar rapi jika memungkinkan,
-    # namun di sini saya sematkan langsung agar Anda bisa sekadar Copy-Paste dengan aman.
     def _map_value(self, x, in_min, in_max, out_min, out_max):
         x = max(in_min, min(in_max, x))
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -526,13 +510,13 @@ class GerakanDasar:
         abs_error = abs(jarak_sekarang - target_jarak)
         
         # --- ADAPTIVE TUNING PID JARAK ---
-        dinamis_Kp = self._map_value(abs_error, 5, 30, 2.0, 8.0)
-        dinamis_Ki = self._map_value(abs_error, 1, 10, 0.1, 0.0)
-        self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
+        # dinamis_Kp = self._map_value(abs_error, 5, 30, 2.0, 8.0)
+        # dinamis_Ki = self._map_value(abs_error, 1, 10, 0.1, 0.0)
+        # self.pid_jarak.set_tunings(dinamis_Kp, dinamis_Ki, self.pid_jarak.Kd)
         # ---------------------------------
 
         kor_sudut = self.pid_kompas2.compute(self.target_angle, robot.sensor.kompas)
-        speed_jarak = self.pid_jarak.compute(target_jarak, jarak_sekarang)
+        speed_jarak = self.pid_jarak2.compute(target_jarak, jarak_sekarang)
 
         speed_jarak = max(-self.base_speed, min(self.base_speed, speed_jarak))
         
@@ -546,7 +530,7 @@ class GerakanDasar:
                 self.waktu_patokan = now
             if now - self.waktu_patokan > 0.1:
                 self.waktu_patokan = None  
-                self.pid_jarak.reset()
+                self.pid_jarak2.reset()
                 self.pid_kompas2.reset()
                 return True
         else:

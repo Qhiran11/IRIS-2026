@@ -23,11 +23,17 @@ class ArduinoDueWriter:
             return False
 
     def kirim_data(self, array_output):
+        # --- PERBAIKAN DI SINI ---
         if not self.ser or not self.ser.is_open:
-            return False
-        num_elements = len(array_output)
+            print("[OUTPUT] Port belum terbuka. Mencoba koneksi ulang...")
+            self.connect()
+            if not self.ser or not self.ser.is_open:
+                return False # Jika masih gagal, lewati siklus ini
+        # -------------------------
 
+        num_elements = len(array_output)
         current_time = time.time()
+        # ... (kode Anda selanjutnya tetap sama)
 
         try:
             if array_output != self.temp_speeds or (current_time - self.last_sent_time > 0.01):

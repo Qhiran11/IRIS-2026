@@ -52,12 +52,20 @@ class SensorReader:
             print("[RECOVERY] Gagal terhubung ulang. Cek fisik kabel USB Anda!")
     
     def baca_data(self):
+        # --- PERBAIKAN DI SINI ---
         if not self.ser or not self.ser.is_open:
-            return None 
+            print("[INPUT] Port belum terbuka. Mencoba koneksi ulang...")
+            self.connect()
+            if not self.ser or not self.ser.is_open:
+                return None # Jika masih gagal, lewati siklus ini
+        # -------------------------
 
+        # Perbaikan tracker anti-freeze (agar tidak trigger reconnect palsu saat baru start)
         if time.time() - self.last_data_time > 1.5:
             self.trigger_koneksi_ulang()
             return None
+        
+        # ... (kode Anda selanjutnya tetap sama)
 
         latest_payload = None # Menyimpan data terbaru
 

@@ -37,6 +37,7 @@ class RakitSenjata:
             robot.state.rakit_start_time = now # TAHAN TIMER DI SINI
             robot.state.rakit_transition_start = now
             gerak.stop(robot)
+            # self.transition_to("MULAI_JEPIT", now, robot, gerak)
             self.transition_to("PERSIAPAN", now, robot, gerak)
         
 
@@ -54,7 +55,6 @@ class RakitSenjata:
             if gerak.hadap_sudut(robot, now):
                 self.transition_to("GESER_KESAMPING", now, robot, gerak)
         
-
 
         elif robot.state.rakit_state == "GESER_KESAMPING":
             
@@ -84,12 +84,12 @@ class RakitSenjata:
                 
 
         elif robot.state.rakit_state == "MULAI_JEPIT":
-            gerak.base_speed = 40
+            gerak.base_speed = 30
             gerak.max_pwm = 40
             robot.motor.CapitTombakNaikTurun = 1
-            gerak.mundur(robot)
-            # gerak.mundur_ke_titik(robot, 11, now)
-            if jarak_belakang <= 11:
+            # gerak.mundur(robot)
+            gerak.mundur_ke_titik(robot, 11, now)
+            if jarak_belakang <= 12:
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)
 
