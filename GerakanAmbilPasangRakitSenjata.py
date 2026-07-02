@@ -43,8 +43,8 @@ class RakitSenjata:
         
 
         elif robot.state.rakit_state == "PERSIAPAN":
-            gerak.base_speed = 80
-            gerak.max_pwm = 100
+            gerak.base_speed = 160
+            gerak.max_pwm = 190
             gerak.maju_diagonal_kiri(robot)
             if (jarak_belakang >= 40):
                 self.transition_to("PUTAR1", now, robot, gerak)
