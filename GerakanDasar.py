@@ -749,112 +749,7 @@ class GerakanDasar:
     # =========================================================================
     # GERAKAN NON-MECANUM (LIFTER / PENGGERAK PW)
     # =========================================================================
-    def turun_roda1(self, robot):
-        jarak_sekarang = robot.sensor.ultrasonic_bawah_depan
-        jarak_target = 9
     
-        if jarak_sekarang <= jarak_target:
-            # Jika sudah sampai atau melewati target, berhenti
-            robot.motor.mDorong2 = 0
-            return True
-        else:
-            selisih_jarak = jarak_sekarang - jarak_target
-            faktor_pengali = 10 
-            kecepatan_hitung = -5 - (selisih_jarak * faktor_pengali)
-            if kecepatan_hitung < -255:
-                kecepatan_hitung = -255
-            
-            robot.motor.mDorong2 = kecepatan_hitung
-            return False
-            
-    def turun_roda2(self, robot):
-        jarak_sekarang = robot.sensor.ultrasonic_bawah_belakang
-        jarak_target = 9
-    
-        if jarak_sekarang <= jarak_target:
-            # Jika sudah sampai atau melewati target, berhenti
-            robot.motor.mDorong1 = 0
-            return True
-        else:
-            selisih_jarak = jarak_sekarang - jarak_target
-            faktor_pengali = 10 
-            kecepatan_hitung = -10 - (selisih_jarak * faktor_pengali)
-            if kecepatan_hitung < -245:
-                kecepatan_hitung = -245
-            
-            robot.motor.mDorong1 = kecepatan_hitung
-            return False
-            
-    def naik_paskan_senjata(self, robot, target_jarak):
-        """
-        Fungsi khusus untuk NAIK mengangkat capit senjata dengan presisi.
-        Mengutamakan keseimbangan (pitch) dengan memberikan headroom PWM.
-        """
-        jarak_sekarang = robot.sensor.ultrasonic_bawah_tengah
-        pitch_sekarang = robot.sensor.pitch_kompas
-        
-        # 1. Hitung Error
-        error_jarak = jarak_sekarang - target_jarak
-        abs_error = abs(error_jarak)
-        
-        # Sesuaikan dengan patokan lurus mekanik Anda (contoh: 3 derajat)
-        temp_pitch = 6 
-        error_pitch = pitch_sekarang - temp_pitch
-        
-        # 2. Toleransi Berhenti: Pas di target (+- 1cm) DAN rata (+- 1 derajat)
-        if abs_error == 0 and error_pitch == 0:
-            robot.motor.mDorong1 = 0
-            robot.motor.mDorong2 = 0
-            self.pid_tinggi.reset()
-            self.pid_pitch.reset()
-            return True
-            
-        # 3. Helper Pemetaan Nilai
-        def map_val(x, in_min, in_max, out_min, out_max):
-            x = max(in_min, min(in_max, x))
-            return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-        # 4. Tuning PID Dinamis & Statis
-        # Kp Tinggi dibatasi di 6.0 agar base_pwm tidak langsung mentok
-        dinamis_Kp_tinggi = map_val(abs_error, 2.0, 20.0, 3.0, 6.0) 
-        self.pid_tinggi.set_tunings(dinamis_Kp_tinggi, 0.0, 1.0)
-        
-        # PID Pitch WAJIB punya Ki (0.05) untuk mendobrak stiction (gesekan statis) motor PW
-        self.pid_pitch.set_tunings(5.0, 0.05, 1.0) 
-        
-        # 5. Kalkulasi PID
-        base_pwm = self.pid_tinggi.compute(target=target_jarak, current=jarak_sekarang)
-        koreksi_pitch = self.pid_pitch.compute(target=temp_pitch, current=pitch_sekarang)
-        
-        # 6. PID MIXING
-        pwm_belakang = base_pwm - koreksi_pitch
-        pwm_depan = base_pwm + koreksi_pitch
-        
-        # 7. ASYMMETRICAL CLAMPING DENGAN HEADROOM (KUNCI KESEIMBANGAN)
-        batas_maksimal_naik = -190 # Menyisakan ~65 PWM untuk koreksi pitch
-        batas_minimal_naik = -100  # Tenaga minimal agar motor tidak 'ngeden' menahan beban
-        
-        def batasi_pwm_naik(pwm_motor):
-            # Batasi Maksimal NAIK
-            if pwm_motor < batas_maksimal_naik:
-                pwm_motor = batas_maksimal_naik
-                
-            # Batasi Minimal NAIK (Mencegah motor berdengung tapi tak kuat ngangkat)
-            elif 0 > pwm_motor > batas_minimal_naik:
-                pwm_motor = batas_minimal_naik
-                
-            # Jika noise membuat sensor menyuruh turun (positif), paksa jadi 0 
-            # agar robot tidak mendadak drop ke bawah saat sedang proses naik
-            elif pwm_motor > 0:
-                pwm_motor = 0
-                
-            return int(pwm_motor)
-            
-        # 8. Eksekusi ke Motor
-        robot.motor.mDorong1 = batasi_pwm_naik(pwm_belakang)
-        robot.motor.mDorong2 = batasi_pwm_naik(pwm_depan)
-        return False
-
     def baliKePosisiAwal(self, robot):
         now = time.time()
         if self.stateReturn == "HadapSudut":
@@ -866,7 +761,7 @@ class GerakanDasar:
         elif self.stateReturn == "MundurKetitik":
             self.base_speed = 40
             self.max_pwm = 50
-            if self.mundur_ke_titik(robot, 10, now):
+            if self.mundur_ke_titik(robot, 10, now) or robot.sensor.proxi_belakang == 0:
                 self.stop(robot)
                 self.stateReturn = "geser ke titik kiri"
                
