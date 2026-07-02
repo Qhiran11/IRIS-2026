@@ -109,7 +109,7 @@ class RakitSenjata:
             gerak.base_speed = 100
             gerak.max_pwm = 250
             
-            if jarak_belakang >= 20: # target 30 cm (52cm sensor belakang)
+            if jarak_belakang >= 30: # target 30 cm (52cm sensor belakang)
                 gerak.stop(robot)
                 if (now - robot.state.rakit_transition_start > 0.1):
                     print("[SENJATA] Tiba di posisi 30cm.")
@@ -119,7 +119,7 @@ class RakitSenjata:
                 if cfg_geser < 20:
                     gerak.maju_diagonal_kiri(robot)
                 else:
-                    gerak.mundur_ke_titik(robot, 20, now)
+                    gerak.mundur_ke_titik(robot, 100, now)
                 robot.state.rakit_transition_start = now
 
         elif robot.state.rakit_state == "PUTAR_NEG_90":

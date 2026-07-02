@@ -503,7 +503,7 @@ class GerakanDasar:
         
         if jarak_sekarang <= 0 or jarak_sekarang == -1:
             # Sesuai logika Anda sebelumnya
-            self.mundur(robot) 
+            self.maju(robot) 
             self.waktu_patokan = None
             return False
 
@@ -737,7 +737,7 @@ class GerakanDasar:
         self._apply_motor(robot, 
                           -kor, -kor,  
                           kor, kor) 
-        if (robot.sensor.kompas >= self.target_angle - 1 and robot.sensor.kompas <= self.target_angle + 1): # -90 derajat ± 1 
+        if (robot.sensor.kompas >= self.target_angle - 2 and robot.sensor.kompas <= self.target_angle + 2): # -90 derajat ± 1 
             self.stop(robot)
             if getattr(self, 'waktu_patokan', None) is None:
                 self.waktu_patokan = now
