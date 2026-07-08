@@ -45,10 +45,10 @@
     },
     "rakit_senjata": {
         "titik_referensi_tombak": [
-            11,
-            31,
-            51,
-            71,
+            20,
+            30,
+            45,
+            82,
             91,
             111
         ],
@@ -57,8 +57,8 @@
             "max_pwm": 70,
             "target_mundur": 30
         },
-        "geser_samping": 34,
-        "arena" :"biru",
+        "geser_samping": 82,
+        "arena": "biru",
         "mulai_jepit": {
             "base_speed": 40,
             "max_pwm": 50,

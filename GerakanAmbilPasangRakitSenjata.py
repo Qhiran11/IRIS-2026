@@ -83,11 +83,11 @@ class RakitSenjata:
         
        
         elif robot.state.rakit_state == "MULAI_JEPIT":
-            gerak.base_speed = 30
-            gerak.max_pwm = 40
+            gerak.base_speed = 20
+            gerak.max_pwm = 30
             robot.motor.CapitTombakNaikTurun = 1
-            # gerak.mundur(robot)
-            gerak.mundur_ke_titik(robot, 11, now)
+            gerak.mundur(robot)
+            # gerak.mundur_ke_titik(robot, 11, now)
             if jarak_belakang <= 12 or proxi == 0:
                 gerak.stop(robot)                
                 self.transition_to("JEPIT", now, robot, gerak)

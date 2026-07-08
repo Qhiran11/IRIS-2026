@@ -3,9 +3,9 @@
 
 #define CMPS12_ADDRESS 0x60
 #define NUM_TARGET_SENSORS 7
-#define FILTER_SIZE 3
+#define FILTER_SIZE 5
 #define MAX_DELTA_CM 15    
-#define MAX_REJECT_COUNT 1 
+#define MAX_REJECT_COUNT 3 
 
 // =======================================================
 // VARIABEL & PIN
@@ -186,7 +186,6 @@ void loop() {
   unsigned long currentMillis = millis();
 
   // 3. Baca Ultrasonik S1-S6 (Sistem Giliran 15ms)
-  // 3. Baca Ultrasonik S1-S6 (Sistem Giliran 15ms)
   if (currentMillis - lastUltra >= 15) {
     lastUltra = currentMillis;
 
@@ -199,25 +198,27 @@ void loop() {
     delayMicroseconds(10);
     digitalWrite(activeTrig, LOW);
 
-    // UBAH: Timeout dikurangi menjadi 30.000 us (sekitar 30ms / ~5 meter)
-    long duration = pulseIn(activeEcho, HIGH, 30000); 
-    
-    // Jika tidak ada pantulan (duration == 0), anggap jarak jauh/maksimal
-    if (duration == 0) duration = 30000; 
-
+    long duration = pulseIn(activeEcho, HIGH, 150000); // Batasi timeout agar tidak memblokir lama
     int jarak = duration * 0.0343 / 2;
+    
     int jarakValid = getRobustDistance(current_sensor, jarak);
     jarak_filter[current_sensor] = jarakValid;
     
     current_sensor = (current_sensor + 1) % NUM_TARGET_SENSORS; 
+    
+    // 4. Jika 1 siklus ultrasonik selesai, panggil CMPS12 & sensor lainnya
+    if (current_sensor == 0) {
+      readCMPS12();
+      // jarakS7 = readSensorS7_UART(); // S7 Kiri (UART)
+    }
   }
+
   // 5. Kirim data paket biner setiap 50ms
   if (currentMillis - lastComm >= 50) {
     lastComm = currentMillis;
-    int currentHeading = readCMPS12();
 
     // Masukkan data ke array untuk dikirim (17 elemen)
-    data_kirim[0] = currentHeading;
+    data_kirim[0] = readCMPS12();
     data_kirim[1] = jarak_filter[3]; // S4 (Depan)
     // data_kirim[2] = (int16_t)jarakS7; // S7 (Kiri) - UART
     data_kirim[2] = jarak_filter[6]; // S7 (Kiri) - UART
