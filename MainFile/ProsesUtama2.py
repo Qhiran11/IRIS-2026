@@ -118,9 +118,9 @@ def main():
             if array_input is not None:
                 robot.sensor.update_dari_array(array_input) # Update memori robot
                 if not is_running:
-                    gerak.target_angle = 90
-                    # gerak.stop(robot)
-                    gerak.hadap_sudut(robot, now)
+                    gerak.target_angle = 0
+                    gerak.stop(robot)
+                    # gerak.hadap_sudut(robot, now)
                     
                     # gerak.geser_ke_titik_kanan(robot, 160, now)
                     # gerak.mundur(robot)

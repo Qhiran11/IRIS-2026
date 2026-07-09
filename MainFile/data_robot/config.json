@@ -57,7 +57,7 @@
             "max_pwm": 70,
             "target_mundur": 30
         },
-        "geser_samping": 82,
+        "geser_samping": 111,
         "arena": "biru",
         "mulai_jepit": {
             "base_speed": 40,
